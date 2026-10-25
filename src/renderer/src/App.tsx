@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type JSX } from 'react';
 import { TitleBar } from './components/TitleBar';
 import { TabBar, type ViewName } from './components/TabBar';
 import { WeekView } from './calendar/WeekView';
+import { minutesToClock } from './calendar/drag';
 import { DayView } from './calendar/DayView';
 import { MonthView } from './calendar/MonthView';
 import type { ViewMode } from './calendar/ViewSwitch';
@@ -175,6 +176,36 @@ export function App(): JSX.Element {
     flash('已保存');
   };
 
+  const handleMove = useCallback(
+    (scheduleId: string, occurrenceStart: string, startMin: number, endMin: number): void => {
+      void (async () => {
+        const api = window.api;
+        if (!api) return;
+        try {
+          const schedule = await api.schedules.get({ id: scheduleId });
+          const date = (schedule.startAt ?? schedule.endAt ?? '').slice(0, 10);
+          if (!date) return;
+
+          const startAt = `${date}T${minutesToClock(startMin)}:00`;
+          const endAt = `${date}T${minutesToClock(endMin)}:00`;
+
+          // 重复日程只挪这一次，其余实例不动
+          await api.schedules.update({
+            id: scheduleId,
+            patch: { startAt, endAt },
+            scope: schedule.recurrenceId ? 'one' : undefined,
+            occurrenceStart: schedule.recurrenceId ? occurrenceStart : undefined,
+          });
+          flash('已调整时间');
+          void reload();
+        } catch (cause) {
+          setLoadError(cause instanceof Error ? cause.message : String(cause));
+        }
+      })();
+    },
+    [flash, reload],
+  );
+
   const goPrev = (): void => {
     if (mode === 'day') setAnchor((d) => addDays(d, -1));
     else if (mode === 'month') setAnchor((d) => addMonths(d, -1));
@@ -238,6 +269,7 @@ export function App(): JSX.Element {
               onSelect={(id, occKey) => {
                 void openEdit(id, occKey);
               }}
+              onMove={handleMove}
             />
           ) : mode === 'month' ? (
             <MonthView
@@ -267,6 +299,7 @@ export function App(): JSX.Element {
               onSelect={(id, occKey) => {
                 void openEdit(id, occKey);
               }}
+              onMove={handleMove}
             />
           )
         ) : (
