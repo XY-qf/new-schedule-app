@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Db } from '../db/driver';
 import type { Schedule, TimeType } from '../../shared/types';
+import type { RecurrenceDraft } from '../../shared/recurrence';
 import { addDays, nowLocal } from '../../shared/time';
 
 export interface ScheduleInput {
