@@ -32,7 +32,7 @@ export interface Schedule {
 
 export interface Occurrence {
   scheduleId: string;
-  startAt: string;
+  startAt: string | null;
   endAt: string | null;
   isAllDay: boolean;
 }
