@@ -119,3 +119,28 @@ describe('ScheduleForm', () => {
     expect(create).not.toHaveBeenCalled();
   });
 });
+
+describe('ScheduleForm · 校验提示（人工验收反馈）', () => {
+  it('结束早于开始时给出中文提示，并说明为什么不能保存', () => {
+    render(<ScheduleForm categories={cats} onSaved={() => {}} onCancel={() => {}} />);
+
+    fireEvent.change(screen.getByLabelText('标题'), { target: { value: '高数' } });
+    fireEvent.click(screen.getByRole('radio', { name: '时间段' }));
+    fireEvent.change(screen.getByLabelText('开始时间'), { target: { value: '2026-10-19T10:00' } });
+    fireEvent.change(screen.getByLabelText('结束时间'), { target: { value: '2026-10-19T09:00' } });
+
+    expect(screen.getByRole('alert').textContent).toContain('结束时间不能早于开始时间');
+    expect((screen.getByRole('button', { name: '保存' }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('刚打开表单时不显示校验错误', () => {
+    render(<ScheduleForm categories={cats} onSaved={() => {}} onCancel={() => {}} />);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('缺开始时间时提示先选时间', () => {
+    render(<ScheduleForm categories={cats} onSaved={() => {}} onCancel={() => {}} />);
+    fireEvent.change(screen.getByLabelText('标题'), { target: { value: '高数' } });
+    expect(screen.getByRole('alert').textContent).toContain('请选择开始时间');
+  });
+});

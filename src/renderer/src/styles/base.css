@@ -199,7 +199,31 @@ body {
   -webkit-app-region: no-drag;
 }
 
+/* 「还原」图标：两个重叠的方框，跟 Windows 的习惯一致 */
+.ico-max--restore::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 6.5px;
+  height: 6.5px;
+  border: 1.2px solid currentColor;
+  border-radius: 1.5px;
+  background: var(--color-panel);
+  z-index: 1;
+}
+
+.winbtn:hover .ico-max--restore::before {
+  background: var(--color-hover);
+}
+
+.winbtn--close:hover .ico-max--restore::before {
+  background: transparent;
+}
+
 .ico-max--restore::after {
-  inset: 2px 0 0 2px;
+  inset: auto 0 0 auto;
+  width: 6.5px;
+  height: 6.5px;
   border-width: 1.2px;
 }

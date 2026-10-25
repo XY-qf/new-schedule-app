@@ -45,3 +45,20 @@ describe('TitleBar', () => {
     expect(screen.queryByLabelText('最大化')).toBeNull();
   });
 });
+
+describe('TitleBar · 还原图标', () => {
+  it('最大化时图标换成「两个方框」的还原样式', () => {
+    const { container } = render(
+      <TitleBar maximized onMinimize={() => {}} onMaximize={() => {}} onClose={() => {}} />,
+    );
+    expect(container.querySelector('.ico-max--restore')).toBeTruthy();
+  });
+
+  it('未最大化时是单方框图标', () => {
+    const { container } = render(
+      <TitleBar maximized={false} onMinimize={() => {}} onMaximize={() => {}} onClose={() => {}} />,
+    );
+    expect(container.querySelector('.ico-max--restore')).toBeNull();
+    expect(container.querySelector('.ico-max')).toBeTruthy();
+  });
+});

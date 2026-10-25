@@ -140,3 +140,7 @@
   border-color: color-mix(in srgb, var(--color-now) 45%, transparent);
   color: var(--color-now);
 }
+.form__input[aria-invalid='true'] {
+  border-color: var(--color-now);
+  background: color-mix(in srgb, var(--color-now) 6%, var(--color-panel-2));
+}

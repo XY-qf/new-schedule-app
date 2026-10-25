@@ -72,6 +72,17 @@ export function ScheduleForm({
 
   const canSave = validationError() === null && !saving;
 
+  // 表单一开始是空的，不要立刻报错；用户一旦动过任何字段，就把原因写出来，
+  // 否则会出现「保存按钮是灰的但不知道为什么」。
+  const touched =
+    title.trim().length > 0 ||
+    startAt.length > 0 ||
+    endAt.length > 0 ||
+    startDate.length > 0 ||
+    endDate.length > 0;
+  const hint = touched ? validationError() : null;
+  const timeInvalid = hint !== null && hint.includes('早于');
+
   const submit = async (): Promise<void> => {
     const invalid = validationError();
     if (invalid) {
@@ -187,6 +198,7 @@ export function ScheduleForm({
             <input
               className="form__input"
               aria-label="开始日期"
+              aria-invalid={timeInvalid}
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
@@ -194,6 +206,7 @@ export function ScheduleForm({
             <input
               className="form__input"
               aria-label="结束日期"
+              aria-invalid={timeInvalid}
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
@@ -205,6 +218,7 @@ export function ScheduleForm({
               <input
                 className="form__input"
                 aria-label="开始时间"
+                aria-invalid={timeInvalid}
                 type="datetime-local"
                 value={startAt}
                 onChange={(e) => setStartAt(e.target.value)}
@@ -214,6 +228,7 @@ export function ScheduleForm({
               <input
                 className="form__input"
                 aria-label="结束时间"
+                aria-invalid={timeInvalid}
                 type="datetime-local"
                 value={endAt}
                 onChange={(e) => setEndAt(e.target.value)}
@@ -222,6 +237,11 @@ export function ScheduleForm({
           </div>
         )}
 
+        {hint ? (
+          <p className="form__error" role="alert">
+            {hint}
+          </p>
+        ) : null}
         {error ? <p className="form__error">{error}</p> : null}
 
         <div className="form__actions">
