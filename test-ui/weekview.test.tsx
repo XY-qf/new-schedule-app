@@ -46,8 +46,9 @@ const renderWeek = (overrides: Partial<Parameters<typeof WeekView>[0]> = {}) =>
     <WeekView
       weekStart="2026-10-19"
       occurrences={occ}
-      categories={cats}
       today="2026-10-23"
+      mode="week"
+      onModeChange={noop}
       onPrevWeek={noop}
       onNextWeek={noop}
       onToday={noop}

@@ -42,3 +42,22 @@ export function startOfWeek(date: string): string {
 export function todayLocal(): string {
   return datePart(nowLocal());
 }
+export function startOfMonth(date: string): string {
+  return `${date.slice(0, 7)}-01`;
+}
+
+/** 在月份上加/减，日期超出目标月天数时落到该月最后一天（1月31日 +1 → 2月28/29日）。 */
+export function addMonths(date: string, delta: number): string {
+  const [y, m] = date.split('-').map(Number) as [number, number];
+  const day = Number(date.slice(8, 10));
+  const first = new Date(Date.UTC(y, m - 1 + delta, 1));
+  const lastDay = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate();
+  const target = Math.min(day, lastDay);
+  return `${first.getUTCFullYear()}-${pad(first.getUTCMonth() + 1)}-${pad(target)}`;
+}
+
+/** 月视图的 42 个格子（周一开头，含上下月补齐）。 */
+export function monthGrid(anchor: string): string[] {
+  const gridStart = startOfWeek(startOfMonth(anchor));
+  return Array.from({ length: 42 }, (_, i) => addDays(gridStart, i));
+}

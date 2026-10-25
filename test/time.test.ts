@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
   addDays,
+  addMonths,
   datePart,
   isoWeekday,
   nowLocal,
+  monthGrid,
+  startOfMonth,
   startOfWeek,
   timePart,
   withSeconds,
@@ -44,5 +47,29 @@ describe('time 工具', () => {
     expect(startOfWeek('2026-10-23')).toBe('2026-10-19');
     expect(startOfWeek('2026-10-19')).toBe('2026-10-19');
     expect(startOfWeek('2026-10-25')).toBe('2026-10-19');
+  });
+});
+describe('月份工具', () => {
+  it('addMonths 落到目标月最后一天（1月31日 +1）', () => {
+    expect(addMonths('2026-01-31', 1)).toBe('2026-02-28');
+    expect(addMonths('2028-01-31', 1)).toBe('2028-02-29');
+  });
+
+  it('addMonths 跨年', () => {
+    expect(addMonths('2026-12-15', 1)).toBe('2027-01-15');
+    expect(addMonths('2026-01-15', -1)).toBe('2025-12-15');
+  });
+
+  it('startOfMonth 归到 1 号', () => {
+    expect(startOfMonth('2026-10-23')).toBe('2026-10-01');
+  });
+
+  it('monthGrid 是 42 天、从周一开始、覆盖当月', () => {
+    const grid = monthGrid('2026-10-23');
+    expect(grid).toHaveLength(42);
+    expect(grid[0]).toBe('2026-09-28');
+    expect(grid[41]).toBe('2026-11-08');
+    expect(grid).toContain('2026-10-01');
+    expect(grid).toContain('2026-10-31');
   });
 });

@@ -1,44 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import type { Category, OccurrenceView } from '../../../shared/types';
-import { addDays, datePart } from '../../../shared/time';
-import { DayColumn, type DayItem } from './DayColumn';
+import type { OccurrenceView } from '../../../shared/types';
+import { addDays } from '../../../shared/time';
+import { DayColumn } from './DayColumn';
 import { TimeAxis } from './TimeAxis';
+import { ViewSwitch, type ViewMode } from './ViewSwitch';
+import { WEEKDAYS, allDayFor, rangeLabel, timedFor } from './spans';
 
-const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 const MAX_ALDAY_PILLS = 2;
-
-function minutesOf(iso: string): number {
-  return Number(iso.slice(11, 13)) * 60 + Number(iso.slice(14, 16));
-}
-
-function timeLabel(iso: string): string {
-  return iso.slice(11, 16);
-}
-
-function rangeLabel(weekStart: string): string {
-  const start = new Date(`${weekStart}T00:00:00`);
-  const end = new Date(`${addDays(weekStart, 6)}T00:00:00`);
-  return `${start.getMonth() + 1}月${start.getDate()}日 – ${end.getMonth() + 1}月${end.getDate()}日`;
-}
-
-interface Span {
-  startDate: string;
-  endDate: string;
-}
-
-/** 一个实例占据的日期区间。全天跨天按「最后一天 00:00」的约定算含当天。 */
-function spanOf(item: OccurrenceView): Span {
-  const anchor = item.startAt ?? item.endAt ?? '';
-  const startDate = datePart(anchor);
-  const endDate = item.endAt ? datePart(item.endAt) : startDate;
-  return endDate < startDate ? { startDate, endDate: startDate } : { startDate, endDate };
-}
 
 export interface WeekViewProps {
   weekStart: string;
   occurrences: OccurrenceView[];
-  categories: Category[];
   today: string;
+  mode: ViewMode;
+  onModeChange: (mode: ViewMode) => void;
   onPrevWeek: () => void;
   onNextWeek: () => void;
   onToday: () => void;
@@ -49,6 +24,8 @@ export function WeekView({
   weekStart,
   occurrences,
   today,
+  mode,
+  onModeChange,
   onPrevWeek,
   onNextWeek,
   onToday,
@@ -77,90 +54,28 @@ export function WeekView({
     });
   }, [weekStart]);
 
-  const spans = useMemo(
-    () => occurrences.map((o) => ({ item: o, span: spanOf(o) })),
-    [occurrences],
-  );
-
-  const allDayByDate = useMemo(() => {
+  const allDayMap = useMemo(() => {
     const map = new Map<string, OccurrenceView[]>();
-    for (const date of dates) {
-      map.set(
-        date,
-        spans
-          .filter(({ item, span }) => item.isAllDay && span.startDate <= date && date <= span.endDate)
-          .map(({ item }) => item),
-      );
-    }
+    for (const date of dates) map.set(date, allDayFor(occurrences, date));
     return map;
-  }, [dates, spans]);
+  }, [dates, occurrences]);
 
-  const timedByDate = useMemo(() => {
-    const map = new Map<string, DayItem[]>();
-    for (const date of dates) {
-      const items: DayItem[] = [];
-      for (const { item, span } of spans) {
-        if (item.isAllDay) continue;
-        if (date < span.startDate || date > span.endDate) continue;
-
-        if (item.timeType !== 'range') {
-          const at = item.startAt ?? item.endAt!;
-          if (datePart(at) !== date) continue;
-          items.push({
-            scheduleId: item.scheduleId,
-            title: item.title,
-            color: item.categoryColor,
-            isDone: item.isDone,
-            timeType: item.timeType,
-            startMin: minutesOf(at),
-            endMin: minutesOf(at),
-            label: item.title,
-            isPoint: true,
-            isContinuationStart: false,
-            isContinuationEnd: false,
-          });
-          continue;
-        }
-
-        const startMin = date === span.startDate ? minutesOf(item.startAt!) : 0;
-        const endMin = date === span.endDate ? minutesOf(item.endAt!) : 24 * 60;
-        const label =
-          date === span.startDate && date === span.endDate
-            ? `${timeLabel(item.startAt!)}–${timeLabel(item.endAt!)}`
-            : date === span.startDate
-              ? `${timeLabel(item.startAt!)}–`
-              : date === span.endDate
-                ? `–${timeLabel(item.endAt!)}`
-                : '全天';
-
-        items.push({
-          scheduleId: item.scheduleId,
-          title: item.title,
-          color: item.categoryColor,
-          isDone: item.isDone,
-          timeType: 'range',
-          startMin,
-          endMin: Math.max(endMin, startMin + 30),
-          label,
-          isPoint: false,
-          isContinuationStart: date !== span.startDate,
-          isContinuationEnd: date !== span.endDate,
-        });
-      }
-      map.set(date, items);
-    }
+  const timedMap = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof timedFor>>();
+    for (const date of dates) map.set(date, timedFor(occurrences, date));
     return map;
-  }, [dates, spans]);
+  }, [dates, occurrences]);
 
   const select = useCallback((id: string) => onSelect(id), [onSelect]);
 
   return (
     <div className="cal">
       <div className="cal__toolbar">
+        <ViewSwitch mode={mode} onChange={onModeChange} />
         <button type="button" className="cal__nav" aria-label="上一周" onClick={onPrevWeek}>
           ‹
         </button>
-        <span className="cal__range">{rangeLabel(weekStart)}</span>
+        <span className="cal__range">{rangeLabel(weekStart, addDays(weekStart, 6))}</span>
         <button type="button" className="cal__nav" aria-label="下一周" onClick={onNextWeek}>
           ›
         </button>
@@ -187,7 +102,7 @@ export function WeekView({
       <div className="cal__allday" data-testid="allday-row">
         <div className="cal__gutter cal__gutter--allday">全天</div>
         {dates.map((date) => {
-          const items = allDayByDate.get(date) ?? [];
+          const items = allDayMap.get(date) ?? [];
           const shown = items.slice(0, MAX_ALDAY_PILLS);
           const rest = items.length - shown.length;
           return (
@@ -217,7 +132,7 @@ export function WeekView({
             index={i}
             date={date}
             isToday={date === today}
-            items={timedByDate.get(date) ?? []}
+            items={timedMap.get(date) ?? []}
             onSelect={select}
           />
         ))}

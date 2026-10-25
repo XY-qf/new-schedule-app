@@ -2,23 +2,44 @@ import { useCallback, useEffect, useMemo, useState, type JSX } from 'react';
 import { TitleBar } from './components/TitleBar';
 import { TabBar, type ViewName } from './components/TabBar';
 import { WeekView } from './calendar/WeekView';
+import { DayView } from './calendar/DayView';
+import { MonthView } from './calendar/MonthView';
+import type { ViewMode } from './calendar/ViewSwitch';
 import { ScheduleForm } from './calendar/ScheduleForm';
-import { addDays, datePart, startOfWeek, todayLocal } from '../../shared/time';
+import {
+  addDays,
+  addMonths,
+  datePart,
+  startOfMonth,
+  startOfWeek,
+  todayLocal,
+} from '../../shared/time';
 import type { Category, OccurrenceView, Schedule } from '../../shared/types';
 
 export function App(): JSX.Element {
   const [view, setView] = useState<ViewName>('calendar');
+  const [mode, setMode] = useState<ViewMode>('week');
+  const [anchor, setAnchor] = useState(() => todayLocal());
+  const [today, setToday] = useState(() => todayLocal());
   const [categories, setCategories] = useState<Category[]>([]);
   const [occurrences, setOccurrences] = useState<OccurrenceView[]>([]);
-  const [weekStart, setWeekStart] = useState(() => startOfWeek(todayLocal()));
-  const [today, setToday] = useState(() => todayLocal());
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Schedule | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [maximized, setMaximized] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
-  const weekEnd = useMemo(() => addDays(weekStart, 6), [weekStart]);
+  const weekStart = useMemo(() => startOfWeek(anchor), [anchor]);
+
+  // 三个视图各自需要的取数窗口；月视图多看前后一周，避免上下月的短条缺失。
+  const range = useMemo((): [string, string] => {
+    if (mode === 'day') return [anchor, anchor];
+    if (mode === 'month') {
+      const first = startOfMonth(anchor);
+      return [addDays(first, -7), addDays(addMonths(first, 1), 7)];
+    }
+    return [weekStart, addDays(weekStart, 6)];
+  }, [mode, anchor, weekStart]);
 
   const reload = useCallback(async (): Promise<void> => {
     const api = window.api;
@@ -26,7 +47,7 @@ export function App(): JSX.Element {
     try {
       const [cats, views] = await Promise.all([
         api.categories.list(),
-        api.schedules.listRange({ start: weekStart, end: weekEnd }),
+        api.schedules.listRange({ start: range[0], end: range[1] }),
       ]);
       setCategories(cats);
       setOccurrences(views);
@@ -34,7 +55,7 @@ export function App(): JSX.Element {
     } catch (cause) {
       setLoadError(cause instanceof Error ? cause.message : String(cause));
     }
-  }, [weekStart, weekEnd]);
+  }, [range]);
 
   useEffect(() => {
     void reload();
@@ -85,15 +106,21 @@ export function App(): JSX.Element {
   }, [reload]);
 
   const handleSaved = (saved: Schedule): void => {
-    // 保存到别的周时把视图切过去，否则用户会以为没保存。
-    const anchor = saved.startAt ?? saved.endAt;
-    if (anchor) {
-      const savedWeek = startOfWeek(datePart(anchor));
-      if (savedWeek !== weekStart) {
-        setWeekStart(savedWeek);
+    const anchorText = saved.startAt ?? saved.endAt;
+    if (anchorText) {
+      const savedDate = datePart(anchorText);
+      const sameWindow =
+        mode === 'day'
+          ? savedDate === anchor
+          : mode === 'month'
+            ? savedDate.startsWith(startOfMonth(anchor).slice(0, 7))
+            : datePart(addDays(weekStart, 6)) >= savedDate && savedDate >= weekStart;
+
+      if (!sameWindow) {
+        setAnchor(savedDate);
         setFormOpen(false);
         setEditing(null);
-        flash('已保存到那周');
+        flash('已保存到那一天');
         return;
       }
     }
@@ -101,12 +128,27 @@ export function App(): JSX.Element {
     flash('已保存');
   };
 
-  const goPrevWeek = (): void => setWeekStart((w) => addDays(w, -7));
-  const goNextWeek = (): void => setWeekStart((w) => addDays(w, 7));
+  const goPrev = (): void => {
+    if (mode === 'day') setAnchor((d) => addDays(d, -1));
+    else if (mode === 'month') setAnchor((d) => addMonths(d, -1));
+    else setAnchor((d) => addDays(d, -7));
+  };
+
+  const goNext = (): void => {
+    if (mode === 'day') setAnchor((d) => addDays(d, 1));
+    else if (mode === 'month') setAnchor((d) => addMonths(d, 1));
+    else setAnchor((d) => addDays(d, 7));
+  };
+
   const goToday = (): void => {
     const now = todayLocal();
     setToday(now);
-    setWeekStart(startOfWeek(now));
+    setAnchor(now);
+  };
+
+  const pickDate = (date: string): void => {
+    setAnchor(date);
+    setMode('day');
   };
 
   return (
@@ -136,18 +178,50 @@ export function App(): JSX.Element {
 
       <main className="app__body app__body--calendar">
         {view === 'calendar' ? (
-          <WeekView
-            weekStart={weekStart}
-            occurrences={occurrences}
-            categories={categories}
-            today={today}
-            onPrevWeek={goPrevWeek}
-            onNextWeek={goNextWeek}
-            onToday={goToday}
-            onSelect={(id) => {
-              void openEdit(id);
-            }}
-          />
+          mode === 'day' ? (
+            <DayView
+              date={anchor}
+              occurrences={occurrences}
+              today={today}
+              mode={mode}
+              onModeChange={setMode}
+              onPrev={goPrev}
+              onNext={goNext}
+              onToday={goToday}
+              onSelect={(id) => {
+                void openEdit(id);
+              }}
+            />
+          ) : mode === 'month' ? (
+            <MonthView
+              anchor={anchor}
+              occurrences={occurrences}
+              today={today}
+              mode={mode}
+              onModeChange={setMode}
+              onPickDate={pickDate}
+              onPrev={goPrev}
+              onNext={goNext}
+              onToday={goToday}
+              onSelect={(id) => {
+                void openEdit(id);
+              }}
+            />
+          ) : (
+            <WeekView
+              weekStart={weekStart}
+              occurrences={occurrences}
+              today={today}
+              mode={mode}
+              onModeChange={setMode}
+              onPrevWeek={goPrev}
+              onNextWeek={goNext}
+              onToday={goToday}
+              onSelect={(id) => {
+                void openEdit(id);
+              }}
+            />
+          )
         ) : (
           <span>待办</span>
         )}
