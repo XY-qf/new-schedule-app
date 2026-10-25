@@ -1,0 +1,137 @@
+.form-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(48, 43, 38, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+
+.form {
+  width: 460px;
+  max-height: 92%;
+  overflow-y: auto;
+  background: var(--color-panel);
+  border: 1px solid var(--color-line);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(74, 60, 42, 0.28);
+  padding: 18px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form__title {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.form__label {
+  font-size: 11.5px;
+  color: var(--color-text-faint);
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  margin-top: 6px;
+}
+
+.form__input {
+  font: inherit;
+  font-size: 14px;
+  color: var(--color-text);
+  background: var(--color-panel-2);
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  padding: 8px 10px;
+  width: 100%;
+}
+
+.form__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.form__row--times .form__input {
+  flex: 1;
+  min-width: 180px;
+}
+
+.chip {
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--color-text-muted);
+  background: var(--color-panel-2);
+  border: 1px solid var(--color-line);
+  border-radius: 99px;
+  padding: 5px 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chip.is-on {
+  border-color: var(--color-text);
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.chip__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: block;
+}
+
+.form__error {
+  font-size: 12px;
+  color: var(--color-now);
+}
+
+.form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.btn {
+  font: inherit;
+  font-size: 13px;
+  padding: 7px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--color-line);
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.btn--primary {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+  font-weight: 600;
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.fab {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(62, 108, 150, 0.4);
+}

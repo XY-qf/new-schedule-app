@@ -26,7 +26,7 @@ export function WeekView({ weekStart, occurrences, today }: WeekViewProps): JSX.
     const el = bodyRef.current;
     if (!el) return;
     const apply = (): void => {
-      el.scrollTop = 7 * 48;
+      el.scrollTop = 7 * 48 - 10;
     };
     const raf1 = requestAnimationFrame(() => {
       apply();
