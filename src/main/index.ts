@@ -18,6 +18,25 @@ if (userDataOverride) {
   app.setPath('userData', userDataOverride);
 }
 
+// 单实例：两个进程同时打开同一个 app.db 会得到互相看不见的两份状态。
+if (!app.requestSingleInstanceLock()) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (!mainWindow) return;
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+  });
+
+  void app.whenReady().then(() => {
+    app.setAppUserModelId(APP_USER_MODEL_ID);
+    db = initDatabase();
+    registerIpcHandlers(db);
+    createWindow();
+  });
+}
+
 function initDatabase(): Db {
   const file = join(app.getPath('userData'), 'data', 'app.db');
   const database = openDatabase(file);
@@ -35,6 +54,8 @@ function createWindow(): void {
     y: bounds.y,
     width: bounds.width,
     height: bounds.height,
+    minWidth: 380,
+    minHeight: 480,
     frame: false,
     show: false,
     webPreferences: {
@@ -62,15 +83,7 @@ function createWindow(): void {
   mainWindow = win;
 }
 
-void app.whenReady().then(() => {
-  app.setAppUserModelId(APP_USER_MODEL_ID);
-  db = initDatabase();
-  registerIpcHandlers(db);
-  createWindow();
-});
-
 app.on('window-all-closed', () => {
-  // 关闭最后窗口 = 退出（M1 的临时行为；托盘形态在 M4 落地后这里不 quit）。
   app.quit();
 });
 

@@ -8,6 +8,7 @@ export const CHANNELS = {
   categoriesUpdate: 'categories:update',
   categoriesDelete: 'categories:delete',
   schedulesListRange: 'schedules:listRange',
+  schedulesGet: 'schedules:get',
   schedulesCreate: 'schedules:create',
   schedulesUpdate: 'schedules:update',
   schedulesDelete: 'schedules:delete',

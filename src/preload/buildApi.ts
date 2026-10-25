@@ -23,6 +23,7 @@ export interface Api {
   };
   schedules: {
     listRange: (input: { start: string; end: string }) => Promise<OccurrenceView[]>;
+    get: (input: { id: string }) => Promise<Schedule>;
     create: (input: ScheduleInput) => Promise<Schedule>;
     update: (input: {
       id: string;
@@ -51,6 +52,7 @@ export function buildApi(ipc: Pick<IpcRenderer, 'invoke'>): Api {
     },
     schedules: {
       listRange: (input) => ipc.invoke(CHANNELS.schedulesListRange, input),
+      get: (input) => ipc.invoke(CHANNELS.schedulesGet, input),
       create: (input) => ipc.invoke(CHANNELS.schedulesCreate, input),
       update: (input) => ipc.invoke(CHANNELS.schedulesUpdate, input),
       delete: (input) => ipc.invoke(CHANNELS.schedulesDelete, input),

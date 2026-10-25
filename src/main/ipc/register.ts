@@ -10,6 +10,7 @@ import {
 import {
   createSchedule,
   deleteSchedule,
+  getSchedule,
   updateSchedule,
   type ScheduleInput,
 } from '../repo/schedules';
@@ -38,6 +39,9 @@ export function registerIpcHandlers(db: Db): void {
     (_e, range: { start: string; end: string }) =>
       listOccurrenceViews(db, range.start, range.end),
   );
+  ipcMain.handle(CHANNELS.schedulesGet, (_e, payload: { id: string }) =>
+    getSchedule(db, payload.id),
+  );
   ipcMain.handle(CHANNELS.schedulesCreate, (_e, input: ScheduleInput) =>
     createSchedule(db, input),
   );
@@ -54,8 +58,12 @@ export function registerIpcHandlers(db: Db): void {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (!win) return null;
 
+    // Windows 上对最大化窗口直接 setContentBounds 不可靠，先还原再设尺寸（FR-5.2.6）。
+    if (win.isMaximized()) win.unmaximize();
+
     const display = screen.getDisplayMatching(win.getBounds());
     const next = boundsForView(payload.view, { workArea: display.workArea }, win.getContentBounds());
+    win.setMinimumSize(Math.min(400, next.width), Math.min(400, next.height));
     win.setContentBounds(next);
     return next;
   });
@@ -72,8 +80,9 @@ export function registerIpcHandlers(db: Db): void {
     return win.isMaximized();
   });
 
-  // FR-12.1：关闭按钮 = 缩到托盘，不是退出。托盘本体在 M4，这里先隐藏窗口。
+  // M1 没有托盘：关闭 = 真正退出（否则窗口藏起来后用户再也没有入口找回）。
+  // M4 落地托盘后，这里改成 hide()，并配合「退出后收不到提醒」的确认。
   ipcMain.handle(CHANNELS.windowCloseToTray, (event) => {
-    BrowserWindow.fromWebContents(event.sender)?.hide();
+    BrowserWindow.fromWebContents(event.sender)?.close();
   });
 }

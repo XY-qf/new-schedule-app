@@ -25,7 +25,7 @@ const fmt = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.ge
 
 test.describe.configure({ mode: 'serial' });
 
-test('M1 闭环：从界面建一条日程，重启后还在', async () => {
+test('M1 闭环：建 → 改 → 重启仍在 → 删', async () => {
   rmSync(USER_DATA, { recursive: true, force: true });
   mkdirSync(USER_DATA, { recursive: true });
 
@@ -33,7 +33,7 @@ test('M1 闭环：从界面建一条日程，重启后还在', async () => {
   monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
   const day = fmt(monday);
 
-  // ---- 第一次启动：通过界面新建 ----
+  // ---- 第一次启动：新建 ----
   const app = await electron.launch({
     executablePath: electronPath,
     args: [appRoot],
@@ -51,9 +51,17 @@ test('M1 闭环：从界面建一条日程，重启后还在', async () => {
   await page.getByRole('button', { name: '保存' }).click();
 
   await expect(page.getByText('验收测试日程')).toBeVisible();
+
+  // ---- 点色块进入编辑，改标题 ----
+  await page.getByText('验收测试日程').click();
+  await expect(page.getByRole('dialog', { name: '日程表单' })).toBeVisible();
+  await page.getByLabel('标题').fill('验收测试日程（已改）');
+  await page.getByRole('button', { name: '保存' }).click();
+
+  await expect(page.getByText('验收测试日程（已改）')).toBeVisible();
   await app.close();
 
-  // ---- 第二次启动：数据必须还在（说明真的落到了磁盘） ----
+  // ---- 第二次启动：数据必须还在 ----
   const app2 = await electron.launch({
     executablePath: electronPath,
     args: [appRoot],
@@ -61,7 +69,13 @@ test('M1 闭环：从界面建一条日程，重启后还在', async () => {
   });
   const page2 = await app2.firstWindow();
   await page2.waitForTimeout(800);
+  await expect(page2.getByText('验收测试日程（已改）')).toBeVisible();
 
-  await expect(page2.getByText('验收测试日程')).toBeVisible();
+  // ---- 删除：二次确认后消失 ----
+  page2.on('dialog', (dialog) => void dialog.accept());
+  await page2.getByText('验收测试日程（已改）').click();
+  await page2.getByRole('button', { name: '删除' }).click();
+
+  await expect(page2.getByText('验收测试日程（已改）')).toHaveCount(0);
   await app2.close();
 });

@@ -3,34 +3,46 @@ import { TitleBar } from './components/TitleBar';
 import { TabBar, type ViewName } from './components/TabBar';
 import { WeekView } from './calendar/WeekView';
 import { ScheduleForm } from './calendar/ScheduleForm';
-import { addDays, startOfWeek, todayLocal } from '../../shared/time';
+import { addDays, datePart, startOfWeek, todayLocal } from '../../shared/time';
 import type { Category, OccurrenceView, Schedule } from '../../shared/types';
 
 export function App(): JSX.Element {
   const [view, setView] = useState<ViewName>('calendar');
   const [categories, setCategories] = useState<Category[]>([]);
   const [occurrences, setOccurrences] = useState<OccurrenceView[]>([]);
+  const [weekStart, setWeekStart] = useState(() => startOfWeek(todayLocal()));
+  const [today, setToday] = useState(() => todayLocal());
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Schedule | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const today = useMemo(() => todayLocal(), []);
-  const weekStart = useMemo(() => startOfWeek(today), [today]);
   const weekEnd = useMemo(() => addDays(weekStart, 6), [weekStart]);
 
   const reload = useCallback(async (): Promise<void> => {
     const api = window.api;
     if (!api) return;
-    const [cats, views] = await Promise.all([
-      api.categories.list(),
-      api.schedules.listRange({ start: weekStart, end: weekEnd }),
-    ]);
-    setCategories(cats);
-    setOccurrences(views);
+    try {
+      const [cats, views] = await Promise.all([
+        api.categories.list(),
+        api.schedules.listRange({ start: weekStart, end: weekEnd }),
+      ]);
+      setCategories(cats);
+      setOccurrences(views);
+      setLoadError(null);
+    } catch (cause) {
+      setLoadError(cause instanceof Error ? cause.message : String(cause));
+    }
   }, [weekStart, weekEnd]);
 
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  // 跨午夜后「今天」要更新，否则高亮、红线、默认周都停在昨天。
+  useEffect(() => {
+    const timer = setInterval(() => setToday(todayLocal()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
 
   const changeView = (next: ViewName): void => {
     setView(next);
@@ -44,10 +56,44 @@ export function App(): JSX.Element {
     setFormOpen(true);
   };
 
-  const handleSaved = (): void => {
+  const openEdit = useCallback(async (scheduleId: string): Promise<void> => {
+    const api = window.api;
+    if (!api) return;
+    try {
+      const schedule = await api.schedules.get({ id: scheduleId });
+      setEditing(schedule);
+      setFormOpen(true);
+    } catch (cause) {
+      setLoadError(cause instanceof Error ? cause.message : String(cause));
+    }
+  }, []);
+
+  const afterWrite = (): void => {
     setFormOpen(false);
     setEditing(null);
     void reload();
+  };
+
+  const handleSaved = (saved: Schedule): void => {
+    // 保存到别的周时把视图切过去，否则用户会以为没保存。
+    const anchor = saved.startAt ?? saved.endAt;
+    if (anchor) {
+      const savedWeek = startOfWeek(datePart(anchor));
+      if (savedWeek !== weekStart) {
+        setWeekStart(savedWeek);
+        setFormOpen(false);
+        setEditing(null);
+        return;
+      }
+    }
+    afterWrite();
+  };
+
+  const goPrevWeek = (): void => setWeekStart((w) => addDays(w, -7));
+  const goNextWeek = (): void => setWeekStart((w) => addDays(w, 7));
+  const goToday = (): void => {
+    setToday(todayLocal());
+    setWeekStart(startOfWeek(todayLocal()));
   };
 
   return (
@@ -64,6 +110,13 @@ export function App(): JSX.Element {
         }}
       />
       <TabBar active={view} onChange={changeView} />
+
+      {loadError ? (
+        <div className="app__error" role="alert">
+          数据加载失败：{loadError}
+        </div>
+      ) : null}
+
       <main className="app__body app__body--calendar">
         {view === 'calendar' ? (
           <WeekView
@@ -71,18 +124,27 @@ export function App(): JSX.Element {
             occurrences={occurrences}
             categories={categories}
             today={today}
+            onPrevWeek={goPrevWeek}
+            onNextWeek={goNextWeek}
+            onToday={goToday}
+            onSelect={(id) => {
+              void openEdit(id);
+            }}
           />
         ) : (
           <span>待办</span>
         )}
+
         <button type="button" className="fab" aria-label="新建日程" onClick={openCreate}>
           ＋
         </button>
+
         {formOpen ? (
           <ScheduleForm
             categories={categories}
             initial={editing ?? undefined}
             onSaved={handleSaved}
+            onDeleted={afterWrite}
             onCancel={() => {
               setFormOpen(false);
               setEditing(null);

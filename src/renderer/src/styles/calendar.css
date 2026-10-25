@@ -1,3 +1,44 @@
+.cal__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 8px;
+}
+
+.cal__nav {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--color-line);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.cal__nav:hover {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+
+.cal__range {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.cal__today-btn {
+  margin-left: auto;
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 7px;
+  border: 1px solid var(--color-line);
+  background: transparent;
+  color: var(--color-accent);
+  cursor: pointer;
+}
+
 .cal {
   flex: 1;
   min-height: 0;
@@ -218,4 +259,55 @@
   background: var(--color-now);
   box-shadow: 0 0 6px color-mix(in srgb, var(--color-now) 60%, transparent);
   pointer-events: none;
+}
+.allday-more {
+  font-size: 10px;
+  color: var(--color-text-faint);
+  padding-left: 2px;
+}
+
+.point[data-done='true'] {
+  opacity: 0.45;
+}
+
+.point[data-done='true'] .point__label {
+  text-decoration: line-through;
+}
+
+.ev[data-cont-start='true'] {
+  border-top-left-radius: 2px;
+  border-top-right-radius: 2px;
+}
+
+.ev[data-cont-end='true'] {
+  border-bottom-left-radius: 2px;
+  border-bottom-right-radius: 2px;
+}
+/* 色块 / 横线 / 全天胶囊现在是 <button>，需要清掉浏览器默认边框与内边距 */
+.ev,
+.point,
+.allday-pill {
+  font: inherit;
+  text-align: left;
+  border-top: 0;
+  border-right: 0;
+  border-bottom: 0;
+  padding: 3px 6px;
+}
+
+.ev {
+  border-left: 3px solid var(--ev-color);
+}
+
+.allday-pill {
+  border-left: 3px solid var(--ev-color);
+  padding: 2px 5px;
+}
+
+.point {
+  border-left: 0;
+  border-top: 0;
+  background: transparent;
+  padding: 0;
+  width: 100%;
 }

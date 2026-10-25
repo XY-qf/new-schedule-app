@@ -10,6 +10,7 @@ release/
 .DS_Store
 Thumbs.db
 .superpowers/
-*.logtest-results/
+*.log
+test-results/
 playwright-report/
 week-shot.png

@@ -74,7 +74,7 @@ describe('ScheduleForm', () => {
 
     fireEvent.change(screen.getByLabelText('标题'), { target: { value: '体检' } });
     fireEvent.click(screen.getByRole('radio', { name: '全天' }));
-    fireEvent.change(screen.getByLabelText('开始时间'), { target: { value: '2026-10-23T00:00' } });
+    fireEvent.change(screen.getByLabelText('开始日期'), { target: { value: '2026-10-23' } });
     fireEvent.click(screen.getByRole('button', { name: '保存' }));
 
     await vi.waitFor(() => expect(create).toHaveBeenCalled());

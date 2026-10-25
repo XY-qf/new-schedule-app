@@ -135,3 +135,8 @@
   cursor: pointer;
   box-shadow: 0 8px 20px rgba(62, 108, 150, 0.4);
 }
+.btn--danger {
+  margin-right: auto;
+  border-color: color-mix(in srgb, var(--color-now) 45%, transparent);
+  color: var(--color-now);
+}

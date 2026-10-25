@@ -5,6 +5,7 @@ export interface ScheduleFormProps {
   categories: Category[];
   initial?: Schedule;
   onSaved: (schedule: Schedule) => void;
+  onDeleted?: () => void;
   onCancel: () => void;
 }
 
@@ -34,38 +35,71 @@ function initialMode(initial?: Schedule): Mode {
   return initial.timeType;
 }
 
-export function ScheduleForm({ categories, initial, onSaved, onCancel }: ScheduleFormProps): JSX.Element {
+export function ScheduleForm({
+  categories,
+  initial,
+  onSaved,
+  onDeleted,
+  onCancel,
+}: ScheduleFormProps): JSX.Element {
   const [title, setTitle] = useState(initial?.title ?? '');
   const [categoryId, setCategoryId] = useState(initial?.categoryId ?? categories[0]?.id ?? '');
   const [mode, setMode] = useState<Mode>(initialMode(initial));
   const [startAt, setStartAt] = useState(trimSeconds(initial?.startAt ?? null));
   const [endAt, setEndAt] = useState(trimSeconds(initial?.endAt ?? null));
+  const [startDate, setStartDate] = useState(initial?.startAt?.slice(0, 10) ?? '');
+  const [endDate, setEndDate] = useState(
+    initial?.isAllDay && initial.endAt ? initial.endAt.slice(0, 10) : '',
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const needsStart = mode === 'allDay' || mode === 'range' || mode === 'start_only';
-  const needsEnd = mode === 'allDay' ? false : mode === 'range' || mode === 'end_only';
+  const needsEnd = mode === 'range' || mode === 'end_only';
 
-  const canSave =
-    title.trim().length > 0 &&
-    categoryId.length > 0 &&
-    (!needsStart || startAt.length > 0) &&
-    (!needsEnd || endAt.length > 0) &&
-    !saving;
+  const validationError = (): string | null => {
+    if (!title.trim()) return '请填写标题';
+    if (mode === 'allDay') {
+      if (!startDate) return '请选择开始日期';
+      if (endDate && endDate < startDate) return '结束日期不能早于开始日期';
+      return null;
+    }
+    if (needsStart && !startAt) return '请选择开始时间';
+    if (needsEnd && !endAt) return '请选择结束时间';
+    if (mode === 'range' && startAt && endAt && endAt < startAt) return '结束时间不能早于开始时间';
+    return null;
+  };
+
+  const canSave = validationError() === null && !saving;
 
   const submit = async (): Promise<void> => {
-    if (!canSave) return;
+    const invalid = validationError();
+    if (invalid) {
+      setError(invalid);
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
-    const payload = {
-      title: title.trim(),
-      categoryId,
-      timeType: (mode === 'allDay' ? 'range' : mode) as TimeType,
-      isAllDay: mode === 'allDay',
-      startAt: needsStart ? withSeconds(startAt) : null,
-      endAt: needsEnd ? withSeconds(endAt) : null,
-    };
+    const payload =
+      mode === 'allDay'
+        ? {
+            title: title.trim(),
+            categoryId,
+            timeType: 'range' as TimeType,
+            isAllDay: true,
+            startAt: `${startDate}T00:00:00`,
+            endAt: endDate && endDate !== startDate ? `${endDate}T00:00:00` : null,
+          }
+        : {
+            title: title.trim(),
+            categoryId,
+            timeType: mode as TimeType,
+            isAllDay: false,
+            startAt: needsStart ? withSeconds(startAt) : null,
+            endAt: needsEnd ? withSeconds(endAt) : null,
+          };
 
     try {
       const api = window.api;
@@ -77,7 +111,23 @@ export function ScheduleForm({ categories, initial, onSaved, onCancel }: Schedul
 
       onSaved(saved);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause));
+      setError(toUserMessage(cause));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = async (): Promise<void> => {
+    if (!initial) return;
+    if (!window.confirm(`删除「${initial.title}」？`)) return;
+
+    setSaving(true);
+    setError(null);
+    try {
+      await window.api?.schedules.delete({ id: initial.id });
+      onDeleted?.();
+    } catch (cause) {
+      setError(toUserMessage(cause));
     } finally {
       setSaving(false);
     }
@@ -132,38 +182,76 @@ export function ScheduleForm({ categories, initial, onSaved, onCancel }: Schedul
           ))}
         </div>
 
-        <div className="form__row form__row--times">
-          {needsStart ? (
+        {mode === 'allDay' ? (
+          <div className="form__row form__row--times">
             <input
               className="form__input"
-              aria-label="开始时间"
-              type="datetime-local"
-              value={startAt}
-              onChange={(e) => setStartAt(e.target.value)}
+              aria-label="开始日期"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
             />
-          ) : null}
-          {needsEnd ? (
             <input
               className="form__input"
-              aria-label="结束时间"
-              type="datetime-local"
-              value={endAt}
-              onChange={(e) => setEndAt(e.target.value)}
+              aria-label="结束日期"
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
             />
-          ) : null}
-        </div>
+          </div>
+        ) : (
+          <div className="form__row form__row--times">
+            {needsStart ? (
+              <input
+                className="form__input"
+                aria-label="开始时间"
+                type="datetime-local"
+                value={startAt}
+                onChange={(e) => setStartAt(e.target.value)}
+              />
+            ) : null}
+            {needsEnd ? (
+              <input
+                className="form__input"
+                aria-label="结束时间"
+                type="datetime-local"
+                value={endAt}
+                onChange={(e) => setEndAt(e.target.value)}
+              />
+            ) : null}
+          </div>
+        )}
 
         {error ? <p className="form__error">{error}</p> : null}
 
         <div className="form__actions">
+          {initial ? (
+            <button type="button" className="btn btn--danger" onClick={() => void remove()}>
+              删除
+            </button>
+          ) : null}
           <button type="button" className="btn" onClick={onCancel}>
             取消
           </button>
-          <button type="button" className="btn btn--primary" disabled={!canSave} onClick={() => void submit()}>
+          <button
+            type="button"
+            className="btn btn--primary"
+            disabled={!canSave}
+            onClick={() => void submit()}
+          >
             保存
           </button>
         </div>
       </div>
     </div>
   );
+}
+
+/** 把驱动层的英文约束错误翻成用户能懂的话。 */
+function toUserMessage(cause: unknown): string {
+  const raw = cause instanceof Error ? cause.message : String(cause);
+  if (raw.includes('CHECK constraint failed')) return '时间填写有误：结束不能早于开始，或必填项缺失';
+  if (raw.includes('FOREIGN KEY')) return '关联的分类不存在，请重新选择分类';
+  if (raw.includes('UNIQUE')) return '这条重复规则已被占用，请换一个时间';
+  return raw.replace(/^Error invoking remote method '[^']+':\s*/, '');
 }

@@ -167,3 +167,11 @@ body {
   color: var(--color-text);
   font-weight: 600;
 }
+.app__error {
+  margin: 0 12px 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--color-now) 12%, transparent);
+  color: var(--color-now);
+  font-size: 12px;
+}
