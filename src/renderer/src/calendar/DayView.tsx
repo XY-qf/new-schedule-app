@@ -16,7 +16,6 @@ export interface DayViewProps {
   onNext: () => void;
   onToday: () => void;
   onSelect: (scheduleId: string, occurrenceStart: string) => void;
-  onMove?: (scheduleId: string, occurrenceStart: string, startMin: number, endMin: number) => void;
 }
 
 export function DayView({
@@ -29,7 +28,6 @@ export function DayView({
   onNext,
   onToday,
   onSelect,
-  onMove,
 }: DayViewProps): JSX.Element {
   const bodyRef = useRef<HTMLDivElement>(null);
   const placedDate = useRef<string | null>(null);
@@ -91,8 +89,7 @@ export function DayView({
 
       <div className="cal__body" ref={bodyRef}>
         <TimeAxis />
-        <DayColumn
-            onMove={onMove} index={0} date={date} isToday={isToday} items={timed} onSelect={select} />
+        <DayColumn index={0} date={date} isToday={isToday} items={timed} onSelect={select} />
       </div>
     </div>
   );

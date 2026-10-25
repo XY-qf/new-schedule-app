@@ -431,13 +431,3 @@
   font-size: 9.5px;
   color: var(--color-text-faint);
 }
-.ev.is-dragging {
-  z-index: 5;
-  opacity: 0.85;
-  box-shadow: 0 8px 20px rgba(48, 43, 38, 0.28);
-  cursor: grabbing;
-}
-
-.ev {
-  cursor: grab;
-}

@@ -134,3 +134,12 @@ describe('TodoView', () => {
     expect(onCreateTask).toHaveBeenCalledOnce();
   });
 });
+
+describe('待办行的打开行为（回归）', () => {
+  it('点任务行也会触发 onOpen（不只是日程行）', () => {
+    const onOpen = vi.fn();
+    renderTodo({ onOpen });
+    fireEvent.click(screen.getByTestId('todo-row-t1'));
+    expect(onOpen).toHaveBeenCalledWith(expect.objectContaining({ kind: 'task', id: 't1' }));
+  });
+});

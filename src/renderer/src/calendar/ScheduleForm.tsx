@@ -76,6 +76,7 @@ export function ScheduleForm({
     initial?.periodEnd ?? initial?.periodStart ?? 1,
   );
 
+  const [isInTodo, setIsInTodo] = useState(initial?.isInTodo ?? false);
   const [recurrence, setRecurrence] = useState<RecurrenceDraft | null>(null);
   const isRecurring = Boolean(initial?.recurrenceId);
   const [scope, setScope] = useState<'one' | 'series'>('one');
@@ -135,7 +136,7 @@ export function ScheduleForm({
     setSaving(true);
     setError(null);
 
-    const base = { title: title.trim(), categoryId };
+    const base = { title: title.trim(), categoryId, isInTodo };
 
     const payload = byPeriod
       ? {
@@ -369,6 +370,20 @@ export function ScheduleForm({
             ) : null}
           </div>
         )}
+
+        <div className="form__row form__row--todo">
+          <button
+            type="button"
+            role="checkbox"
+            aria-checked={isInTodo}
+            aria-label="加入待办"
+            className={isInTodo ? 'chip is-on' : 'chip'}
+            onClick={() => setIsInTodo((v) => !v)}
+          >
+            {isInTodo ? '✓ ' : ''}加入待办
+          </button>
+          <span className="recur__summary">勾上后会出现在待办列表</span>
+        </div>
 
         {initial ? null : (
           <>

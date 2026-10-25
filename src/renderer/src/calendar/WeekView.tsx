@@ -18,7 +18,6 @@ export interface WeekViewProps {
   onNextWeek: () => void;
   onToday: () => void;
   onSelect: (scheduleId: string, occurrenceStart: string) => void;
-  onMove?: (scheduleId: string, occurrenceStart: string, startMin: number, endMin: number) => void;
 }
 
 export function WeekView({
@@ -31,7 +30,6 @@ export function WeekView({
   onNextWeek,
   onToday,
   onSelect,
-  onMove,
 }: WeekViewProps): JSX.Element {
   const bodyRef = useRef<HTMLDivElement>(null);
   const placedWeek = useRef<string | null>(null);
@@ -130,7 +128,6 @@ export function WeekView({
         <TimeAxis />
         {dates.map((date, i) => (
           <DayColumn
-            onMove={onMove}
             key={date}
             index={i}
             date={date}

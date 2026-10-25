@@ -15,6 +15,7 @@ export const CHANNELS = {
   periodsList: 'periods:list',
   todoList: 'todo:list',
   tasksCreate: 'tasks:create',
+  tasksUpdate: 'tasks:update',
   tasksSetDone: 'tasks:setDone',
   tasksDelete: 'tasks:delete',
   schedulesSetDone: 'schedules:setDone',

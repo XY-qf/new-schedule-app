@@ -64,6 +64,10 @@ export interface Api {
   };
   tasks: {
     create: (input: { title: string; categoryId?: string | null; note?: string | null }) => Promise<Task>;
+    update: (input: {
+      id: string;
+      patch: { title?: string; categoryId?: string | null; note?: string | null };
+    }) => Promise<Task>;
     setDone: (input: { id: string; isDone: boolean }) => Promise<Task>;
     remove: (input: { id: string }) => Promise<void>;
   };
@@ -111,6 +115,7 @@ export function buildApi(ipc: Pick<IpcRenderer, 'invoke'>): Api {
     },
     tasks: {
       create: (input) => ipc.invoke(CHANNELS.tasksCreate, input),
+      update: (input) => ipc.invoke(CHANNELS.tasksUpdate, input),
       setDone: (input) => ipc.invoke(CHANNELS.tasksSetDone, input),
       remove: (input) => ipc.invoke(CHANNELS.tasksDelete, input),
     },

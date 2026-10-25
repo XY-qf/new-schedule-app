@@ -311,3 +311,44 @@ describe('ScheduleForm · 时间段下的两种填法（T19 修正）', () => {
     expect(screen.getByRole('alert').textContent).toContain('结束节次不能早于开始节次');
   });
 });
+describe('ScheduleForm · 加入待办（修正）', () => {
+  it('默认不加入待办，payload 里 isInTodo 为 false', async () => {
+    render(<ScheduleForm categories={cats} onSaved={() => {}} onCancel={() => {}} />);
+    fireEvent.change(screen.getByLabelText('标题'), { target: { value: '普通日程' } });
+    fireEvent.change(screen.getByLabelText('开始时间'), { target: { value: '2026-10-26T09:00' } });
+    fireEvent.change(screen.getByLabelText('结束时间'), { target: { value: '2026-10-26T10:00' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
+
+    await vi.waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0]![0]).toEqual(expect.objectContaining({ isInTodo: false }));
+  });
+
+  it('勾上「加入待办」后 payload 带 isInTodo: true', async () => {
+    render(<ScheduleForm categories={cats} onSaved={() => {}} onCancel={() => {}} />);
+    fireEvent.change(screen.getByLabelText('标题'), { target: { value: '要交的作业' } });
+    fireEvent.change(screen.getByLabelText('开始时间'), { target: { value: '2026-10-26T09:00' } });
+    fireEvent.change(screen.getByLabelText('结束时间'), { target: { value: '2026-10-26T10:00' } });
+    fireEvent.click(screen.getByLabelText('加入待办'));
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
+
+    await vi.waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0]![0]).toEqual(expect.objectContaining({ isInTodo: true }));
+  });
+
+  it('编辑已加入待办的日程时，勾选状态带出来', () => {
+    render(
+      <ScheduleForm
+        categories={cats}
+        initial={{
+          id: 's1', title: 'x', categoryId: 'cat-course', timeType: 'range', isAllDay: false,
+          startAt: '2026-10-26T09:00:00', endAt: '2026-10-26T10:00:00', recurrenceId: null,
+          periodStart: null, periodEnd: null, sortHint: null, location: null, note: null,
+          isInTodo: true, isDone: false, doneAt: null, createdAt: 't', updatedAt: 't',
+        }}
+        onSaved={() => {}}
+        onCancel={() => {}}
+      />,
+    );
+    expect(screen.getByLabelText('加入待办').getAttribute('aria-checked')).toBe('true');
+  });
+});

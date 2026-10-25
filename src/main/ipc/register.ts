@@ -18,7 +18,7 @@ import {
 import { listOccurrenceViews } from '../service/calendar';
 import { upsertException } from '../repo/exceptions';
 import { listPeriods } from '../repo/periods';
-import { createTask, deleteTask, setTaskDone } from '../repo/tasks';
+import { createTask, deleteTask, setTaskDone, updateTask } from '../repo/tasks';
 import { listTodoItems } from '../service/todo';
 import { createCountdown, deleteCountdown, listCountdowns, updateCountdown } from '../repo/countdowns';
 import { getSetting, setSetting } from '../repo/settings';
@@ -107,6 +107,11 @@ export function registerIpcHandlers(db: Db): void {
     CHANNELS.tasksCreate,
     (_e, input: { title: string; categoryId?: string | null; note?: string | null }) =>
       createTask(db, input),
+  );
+  ipcMain.handle(
+    CHANNELS.tasksUpdate,
+    (_e, payload: { id: string; patch: { title?: string; categoryId?: string | null; note?: string | null } }) =>
+      updateTask(db, payload.id, payload.patch),
   );
   ipcMain.handle(
     CHANNELS.tasksSetDone,
