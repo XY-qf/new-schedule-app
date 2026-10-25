@@ -1,0 +1,14 @@
+[data-theme='dark'] {
+  /* 深色主题：暖白纸感反相推导，保持「暖」而不是纯黑 */
+  --color-stage: #1b1917;
+  --color-panel: #262320;
+  --color-panel-2: #2f2b27;
+  --color-line: #3d3833;
+  --color-grid: #322e2a;
+  --color-text: #ede6da;
+  --color-text-muted: #a89f92;
+  --color-text-faint: #6f685e;
+  --color-accent: #7fa8cc;
+  --color-now: #e0736a;
+  --color-hover: #332f2b;
+}

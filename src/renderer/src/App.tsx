@@ -9,6 +9,8 @@ import { ScheduleForm } from './calendar/ScheduleForm';
 import { TodoView } from './todo/TodoView';
 import { TaskForm } from './todo/TaskForm';
 import { CountdownForm } from './todo/CountdownBlock';
+import { SettingsPanel } from './settings/SettingsPanel';
+import { useTheme } from './settings/theme';
 import {
   addDays,
   addMonths,
@@ -44,6 +46,8 @@ export function App(): JSX.Element {
   const [countdowns, setCountdowns] = useState<Countdown[]>([]);
   const [countdownCollapsed, setCountdownCollapsed] = useState(true);
   const [countdownFormOpen, setCountdownFormOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [theme, setTheme] = useTheme();
 
   const weekStart = useMemo(() => startOfWeek(anchor), [anchor]);
 
@@ -204,6 +208,7 @@ export function App(): JSX.Element {
     <div className="app">
       <TitleBar
         maximized={maximized}
+        onSettings={() => setSettingsOpen(true)}
         onMinimize={() => {
           void window.api?.window.minimize();
         }}
@@ -379,6 +384,14 @@ export function App(): JSX.Element {
               setTaskFormOpen(false);
               setEditingTask(null);
             }}
+          />
+        ) : null}
+
+        {settingsOpen ? (
+          <SettingsPanel
+            theme={theme}
+            onThemeChange={setTheme}
+            onClose={() => setSettingsOpen(false)}
           />
         ) : null}
 

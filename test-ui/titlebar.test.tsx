@@ -7,6 +7,7 @@ describe('TitleBar', () => {
     render(
       <TitleBar
         maximized={false}
+        onSettings={() => {}}
         onMinimize={() => {}}
         onMaximize={() => {}}
         onClose={() => {}}
@@ -23,6 +24,7 @@ describe('TitleBar', () => {
     render(
       <TitleBar
         maximized={false}
+        onSettings={() => {}}
         onMinimize={() => {}}
         onMaximize={() => {}}
         onClose={onClose}
@@ -36,6 +38,7 @@ describe('TitleBar', () => {
     render(
       <TitleBar
         maximized
+        onSettings={() => {}}
         onMinimize={() => {}}
         onMaximize={() => {}}
         onClose={() => {}}
@@ -49,14 +52,26 @@ describe('TitleBar', () => {
 describe('TitleBar · 还原图标', () => {
   it('最大化时图标换成「两个方框」的还原样式', () => {
     const { container } = render(
-      <TitleBar maximized onMinimize={() => {}} onMaximize={() => {}} onClose={() => {}} />,
+      <TitleBar
+        maximized
+        onSettings={() => {}}
+        onMinimize={() => {}}
+        onMaximize={() => {}}
+        onClose={() => {}}
+      />,
     );
     expect(container.querySelector('.ico-max--restore')).toBeTruthy();
   });
 
   it('未最大化时是单方框图标', () => {
     const { container } = render(
-      <TitleBar maximized={false} onMinimize={() => {}} onMaximize={() => {}} onClose={() => {}} />,
+      <TitleBar
+        maximized={false}
+        onSettings={() => {}}
+        onMinimize={() => {}}
+        onMaximize={() => {}}
+        onClose={() => {}}
+      />,
     );
     expect(container.querySelector('.ico-max--restore')).toBeNull();
     expect(container.querySelector('.ico-max')).toBeTruthy();

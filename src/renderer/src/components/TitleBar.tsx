@@ -3,6 +3,7 @@ import { WindowButtons } from './WindowButtons';
 
 export interface TitleBarProps {
   maximized: boolean;
+  onSettings: () => void;
   onMinimize: () => void;
   onMaximize: () => void;
   onClose: () => void;
@@ -10,6 +11,7 @@ export interface TitleBarProps {
 
 export function TitleBar({
   maximized,
+  onSettings,
   onMinimize,
   onMaximize,
   onClose,
@@ -17,6 +19,9 @@ export function TitleBar({
   return (
     <header className="titlebar">
       <span className="titlebar__app">{APP_NAME}</span>
+      <button type="button" className="titlebar__gear" aria-label="设置" onClick={onSettings}>
+        ⚙
+      </button>
       <WindowButtons
         maximized={maximized}
         onMinimize={onMinimize}

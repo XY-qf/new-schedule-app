@@ -227,3 +227,22 @@ body {
   height: 6.5px;
   border-width: 1.2px;
 }
+.titlebar__gear {
+  margin-left: auto;
+  margin-right: 8px;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar__gear:hover {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
