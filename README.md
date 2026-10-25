@@ -70,7 +70,31 @@ scripts/        一次性验证脚本（如 SQLite 探针）
 
 ## 数据库
 
-使用 **Electron 内置的 Node `node:sqlite`**（`DatabaseSync`），不引入任何原生模块，因此**不需要编译器工具链**。
+使用 **`node-sqlite3-wasm`**（SQLite 的 WebAssembly 构建）：不引入原生模块，**不需要编译器工具链**，也不挑 Electron 版本。
+
+> 为什么不用 `node:sqlite`：它要求 Electron ≥ 35，而本项目实测 **Electron ≥ 35 在本机启动即崩**（`0x80000003`），只有 33 可用；Electron 33 带的是 Node 20，没有 `node:sqlite`。详见下面的「已知限制」。
+
+驱动封装在 `src/main/db/driver.ts`，对外只暴露 `prepare / exec / pragma / transaction / close`，换底层只改这一个文件。
+
+## 已知限制（重要）
+
+### 1. Electron 必须锁在 33
+
+`package.json` 里 `electron` 固定为 `33.4.11`。实测 **35 / 40 / 42 / 45 启动即崩溃**（Windows 事件日志：`electron.exe` 异常代码 `0xc0000005`，退出码 `-2147483645`），33 正常。已用同一二进制在不同目录做过对照，排除路径与安装损坏。
+
+升级 Electron 前，必须先在目标机器上跑一遍 `scripts/probe-window.cjs` 确认能开窗。
+
+### 2. `.npmrc` 必须保留 `node-linker=hoisted`
+
+pnpm 默认用符号链接农场（`node_modules/.pnpm`）组织依赖。**Electron 在这种结构下启动会崩**，改成扁平的真实目录才正常。删掉 `.npmrc` 会重现崩溃。
+
+### 3. `ELECTRON_RUN_AS_NODE` 必须清掉
+
+见上文「快速开始」里的说明。
+
+### 4. 高 DPI 下窗口尺寸会取整
+
+150% 缩放下请求 `1000×700` 实际得到 `1002×702`。端到端测试断言窗口尺寸时用容差（±4），不要写成精确相等。
 
 ## 参与贡献
 
