@@ -1,12 +1,12 @@
 import type { Db } from './driver';
+import { m001 } from './migrations/001_init';
 
 export interface Migration {
   version: number;
   up: (db: Db) => void;
 }
 
-/** T6 会往这里加 001_init；T5 阶段故意为空。 */
-export const MIGRATIONS: Migration[] = [];
+export const MIGRATIONS: Migration[] = [m001];
 
 /**
  * 按 version 升序执行尚未应用的迁移。
