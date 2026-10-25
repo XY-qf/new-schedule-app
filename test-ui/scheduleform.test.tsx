@@ -224,38 +224,49 @@ describe('ScheduleForm · 重复日程的改动范围（T18）', () => {
   });
 });
 
-describe('ScheduleForm · 按节次填时间（T19）', () => {
+describe('ScheduleForm · 时间段下的两种填法（T19 修正）', () => {
   const periods = [
     { no: 1, label: '第 1 节', startTime: '08:00', endTime: '08:45' },
     { no: 2, label: '第 2 节', startTime: '08:50', endTime: '09:35' },
     { no: 3, label: '第 3 节', startTime: '10:00', endTime: '10:45' },
   ];
 
-  it('选第 1–2 节填入后，时间变成 08:00–09:35', () => {
-    render(
-      <ScheduleForm categories={cats} periods={periods} onSaved={() => {}} onCancel={() => {}} />,
-    );
+  it('「时间段」下出现「精确时间 / 按节次」二选一，默认精确时间', () => {
+    render(<ScheduleForm categories={cats} periods={periods} onSaved={() => {}} onCancel={() => {}} />);
 
-    fireEvent.change(screen.getByLabelText('开始时间'), { target: { value: '2026-10-26T09:00' } });
-    fireEvent.change(screen.getByLabelText('结束时间'), { target: { value: '2026-10-26T10:00' } });
-    fireEvent.change(screen.getByLabelText('结束节次'), { target: { value: '2' } });
-    fireEvent.click(screen.getByRole('button', { name: '填入' }));
-
-    expect((screen.getByLabelText('开始时间') as HTMLInputElement).value).toBe('2026-10-26T08:00');
-    expect((screen.getByLabelText('结束时间') as HTMLInputElement).value).toBe('2026-10-26T09:35');
-    expect(screen.getByTestId('period-applied').textContent).toContain('第 1–2 节');
+    expect(screen.getByTestId('range-source')).toBeTruthy();
+    expect(screen.getByRole('radio', { name: '精确时间' }).getAttribute('aria-checked')).toBe('true');
+    // 默认是精确时间：有时间输入、没有节次下拉
+    expect(screen.getByLabelText('开始时间')).toBeTruthy();
+    expect(screen.queryByLabelText('开始节次')).toBeNull();
   });
 
-  it('按节次填过以后，保存会带上 periodStart / periodEnd', async () => {
-    render(
-      <ScheduleForm categories={cats} periods={periods} onSaved={() => {}} onCancel={() => {}} />,
-    );
+  it('切到「按节次」后，时间输入消失、换成日期 + 节次', () => {
+    render(<ScheduleForm categories={cats} periods={periods} onSaved={() => {}} onCancel={() => {}} />);
+
+    fireEvent.click(screen.getByRole('radio', { name: '按节次' }));
+
+    expect(screen.queryByLabelText('开始时间')).toBeNull();
+    expect(screen.getByLabelText('日期')).toBeTruthy();
+    expect(screen.getByLabelText('开始节次')).toBeTruthy();
+    expect(screen.getByLabelText('结束节次')).toBeTruthy();
+  });
+
+  it('选第 1–2 节时预览显示 08:00–09:35', () => {
+    render(<ScheduleForm categories={cats} periods={periods} onSaved={() => {}} onCancel={() => {}} />);
+    fireEvent.click(screen.getByRole('radio', { name: '按节次' }));
+    fireEvent.change(screen.getByLabelText('结束节次'), { target: { value: '2' } });
+
+    expect(screen.getByTestId('period-preview').textContent).toBe('08:00–09:35');
+  });
+
+  it('按节次保存时换算成起止时间并记下节次', async () => {
+    render(<ScheduleForm categories={cats} periods={periods} onSaved={() => {}} onCancel={() => {}} />);
 
     fireEvent.change(screen.getByLabelText('标题'), { target: { value: '高数' } });
-    fireEvent.change(screen.getByLabelText('开始时间'), { target: { value: '2026-10-26T09:00' } });
-    fireEvent.change(screen.getByLabelText('结束时间'), { target: { value: '2026-10-26T10:00' } });
+    fireEvent.click(screen.getByRole('radio', { name: '按节次' }));
+    fireEvent.change(screen.getByLabelText('日期'), { target: { value: '2026-10-26' } });
     fireEvent.change(screen.getByLabelText('结束节次'), { target: { value: '2' } });
-    fireEvent.click(screen.getByRole('button', { name: '填入' }));
     fireEvent.click(screen.getByRole('button', { name: '保存' }));
 
     await vi.waitFor(() => expect(create).toHaveBeenCalled());
@@ -269,10 +280,8 @@ describe('ScheduleForm · 按节次填时间（T19）', () => {
     );
   });
 
-  it('手填时间不挂节次', async () => {
-    render(
-      <ScheduleForm categories={cats} periods={periods} onSaved={() => {}} onCancel={() => {}} />,
-    );
+  it('精确时间保存时不挂节次', async () => {
+    render(<ScheduleForm categories={cats} periods={periods} onSaved={() => {}} onCancel={() => {}} />);
 
     fireEvent.change(screen.getByLabelText('标题'), { target: { value: '手填' } });
     fireEvent.change(screen.getByLabelText('开始时间'), { target: { value: '2026-10-26T09:00' } });
@@ -285,11 +294,20 @@ describe('ScheduleForm · 按节次填时间（T19）', () => {
     );
   });
 
-  it('没选日期就按节次填入时给出提示', () => {
-    render(
-      <ScheduleForm categories={cats} periods={periods} onSaved={() => {}} onCancel={() => {}} />,
-    );
-    fireEvent.click(screen.getByRole('button', { name: '填入' }));
-    expect(screen.getByText('请先选择日期，再按节次填入')).toBeTruthy();
+  it('按节次没选日期时提示原因', () => {
+    render(<ScheduleForm categories={cats} periods={periods} onSaved={() => {}} onCancel={() => {}} />);
+    fireEvent.click(screen.getByRole('radio', { name: '按节次' }));
+    fireEvent.change(screen.getByLabelText('标题'), { target: { value: 'x' } });
+    expect(screen.getByRole('alert').textContent).toContain('请选择日期');
+  });
+
+  it('结束节次早于开始节次时提示', () => {
+    render(<ScheduleForm categories={cats} periods={periods} onSaved={() => {}} onCancel={() => {}} />);
+    fireEvent.change(screen.getByLabelText('标题'), { target: { value: 'x' } });
+    fireEvent.click(screen.getByRole('radio', { name: '按节次' }));
+    fireEvent.change(screen.getByLabelText('日期'), { target: { value: '2026-10-26' } });
+    fireEvent.change(screen.getByLabelText('开始节次'), { target: { value: '3' } });
+    fireEvent.change(screen.getByLabelText('结束节次'), { target: { value: '1' } });
+    expect(screen.getByRole('alert').textContent).toContain('结束节次不能早于开始节次');
   });
 });

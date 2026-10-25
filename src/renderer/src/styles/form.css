@@ -168,3 +168,11 @@
   padding: 4px 10px;
   font-size: 12px;
 }
+.form__row--source {
+  margin-top: 4px;
+  padding-left: 2px;
+}
+
+.form__row--periods {
+  align-items: center;
+}

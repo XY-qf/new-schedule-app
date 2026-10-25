@@ -16,6 +16,8 @@ export interface ScheduleFormProps {
 }
 
 type Mode = 'allDay' | TimeType;
+/** 「时间段」下的两种填法，二选一：直接填时刻，或者按第几节自动换算。 */
+type RangeSource = 'exact' | 'period';
 
 const MODE_LABEL: Record<Mode, string> = {
   allDay: '全天',
@@ -53,30 +55,56 @@ export function ScheduleForm({
   const [title, setTitle] = useState(initial?.title ?? '');
   const [categoryId, setCategoryId] = useState(initial?.categoryId ?? categories[0]?.id ?? '');
   const [mode, setMode] = useState<Mode>(initialMode(initial));
+
+  // 精确时间
   const [startAt, setStartAt] = useState(trimSeconds(initial?.startAt ?? null));
   const [endAt, setEndAt] = useState(trimSeconds(initial?.endAt ?? null));
+
+  // 全天
   const [startDate, setStartDate] = useState(initial?.startAt?.slice(0, 10) ?? '');
   const [endDate, setEndDate] = useState(
     initial?.isAllDay && initial.endAt ? initial.endAt.slice(0, 10) : '',
   );
+
+  // 按节次：带 period_start 的旧记录直接进这个模式
+  const [rangeSource, setRangeSource] = useState<RangeSource>(
+    initial?.periodStart != null ? 'period' : 'exact',
+  );
+  const [periodDate, setPeriodDate] = useState(initial?.startAt?.slice(0, 10) ?? '');
+  const [periodFrom, setPeriodFrom] = useState<number>(initial?.periodStart ?? 1);
+  const [periodTo, setPeriodTo] = useState<number>(
+    initial?.periodEnd ?? initial?.periodStart ?? 1,
+  );
+
   const [recurrence, setRecurrence] = useState<RecurrenceDraft | null>(null);
   const isRecurring = Boolean(initial?.recurrenceId);
   const [scope, setScope] = useState<'one' | 'series'>('one');
-  const [periodFrom, setPeriodFrom] = useState<number>(1);
-  const [periodTo, setPeriodTo] = useState<number>(1);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const byPeriod = mode === 'range' && rangeSource === 'period';
+  const periodRange = byPeriod ? periodToTimeRange(periods, periodFrom, periodTo) : null;
 
   const needsStart = mode === 'allDay' || mode === 'range' || mode === 'start_only';
   const needsEnd = mode === 'range' || mode === 'end_only';
 
   const validationError = (): string | null => {
     if (!title.trim()) return '请填写标题';
+
     if (mode === 'allDay') {
       if (!startDate) return '请选择开始日期';
       if (endDate && endDate < startDate) return '结束日期不能早于开始日期';
       return null;
     }
+
+    if (byPeriod) {
+      if (periods.length === 0) return '作息时间表为空，无法按节次创建';
+      if (periodTo < periodFrom) return '结束节次不能早于开始节次';
+      if (!periodDate) return '请选择日期';
+      if (!periodRange) return '选中的节次不在作息表里';
+      return null;
+    }
+
     if (needsStart && !startAt) return '请选择开始时间';
     if (needsEnd && !endAt) return '请选择结束时间';
     if (mode === 'range' && startAt && endAt && endAt < startAt) return '结束时间不能早于开始时间';
@@ -92,31 +120,10 @@ export function ScheduleForm({
     startAt.length > 0 ||
     endAt.length > 0 ||
     startDate.length > 0 ||
-    endDate.length > 0;
+    endDate.length > 0 ||
+    periodDate.length > 0;
   const hint = touched ? validationError() : null;
   const timeInvalid = hint !== null && hint.includes('早于');
-
-  const [appliedPeriod, setAppliedPeriod] = useState<{ from: number; to: number } | null>(null);
-
-  /** 按节次把起止时刻填进表单；日期沿用已选的日期。 */
-  const applyPeriod = (): void => {
-    const range = periodToTimeRange(periods, periodFrom, periodTo);
-    if (!range) {
-      setError('选中的节次不在作息表里');
-      return;
-    }
-    const date = startAt ? startAt.slice(0, 10) : endAt ? endAt.slice(0, 10) : '';
-    if (!date) {
-      setError('请先选择日期，再按节次填入');
-      return;
-    }
-    setStartAt(`${date}T${range.startTime}`);
-    setEndAt(`${date}T${range.endTime}`);
-    setAppliedPeriod({ from: periodFrom, to: periodTo });
-    setError(null);
-  };
-
-  const clearPeriod = (): void => setAppliedPeriod(null);
 
   const submit = async (): Promise<void> => {
     const invalid = validationError();
@@ -128,26 +135,37 @@ export function ScheduleForm({
     setSaving(true);
     setError(null);
 
-    const payload =
-      mode === 'allDay'
+    const base = { title: title.trim(), categoryId };
+
+    const payload = byPeriod
+      ? {
+          ...base,
+          timeType: 'range' as TimeType,
+          isAllDay: false,
+          startAt: `${periodDate}T${periodRange!.startTime}:00`,
+          endAt: `${periodDate}T${periodRange!.endTime}:00`,
+          // 只有按节次建的才记节次，手填时间不挂（FR-3.5 只重算按节次建的）。
+          periodStart: periodFrom,
+          periodEnd: periodTo,
+        }
+      : mode === 'allDay'
         ? {
-            title: title.trim(),
-            categoryId,
+            ...base,
             timeType: 'range' as TimeType,
             isAllDay: true,
             startAt: `${startDate}T00:00:00`,
             endAt: endDate && endDate !== startDate ? `${endDate}T00:00:00` : null,
+            periodStart: null,
+            periodEnd: null,
           }
         : {
-            title: title.trim(),
-            categoryId,
+            ...base,
             timeType: mode as TimeType,
             isAllDay: false,
             startAt: needsStart ? withSeconds(startAt) : null,
             endAt: needsEnd ? withSeconds(endAt) : null,
-            // 只有真的「按节次」填过才记节次，手填的时间不挂节次（FR-3.5 只重算按节次建的）。
-            periodStart: appliedPeriod?.from ?? null,
-            periodEnd: appliedPeriod?.to ?? null,
+            periodStart: null,
+            periodEnd: null,
           };
 
     try {
@@ -244,6 +262,29 @@ export function ScheduleForm({
           ))}
         </div>
 
+        {mode === 'range' ? (
+          <div className="form__row form__row--source" data-testid="range-source">
+            <button
+              type="button"
+              role="radio"
+              aria-checked={rangeSource === 'exact'}
+              className={rangeSource === 'exact' ? 'chip is-on' : 'chip'}
+              onClick={() => setRangeSource('exact')}
+            >
+              精确时间
+            </button>
+            <button
+              type="button"
+              role="radio"
+              aria-checked={rangeSource === 'period'}
+              className={rangeSource === 'period' ? 'chip is-on' : 'chip'}
+              onClick={() => setRangeSource('period')}
+            >
+              按节次
+            </button>
+          </div>
+        ) : null}
+
         {mode === 'allDay' ? (
           <div className="form__row form__row--times">
             <input
@@ -262,6 +303,47 @@ export function ScheduleForm({
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
             />
+          </div>
+        ) : byPeriod ? (
+          <div className="form__row form__row--periods" data-testid="period-fields">
+            <input
+              className="form__input"
+              aria-label="日期"
+              aria-invalid={timeInvalid}
+              type="date"
+              value={periodDate}
+              onChange={(e) => setPeriodDate(e.target.value)}
+            />
+            <select
+              className="form__select"
+              aria-label="开始节次"
+              value={periodFrom}
+              onChange={(e) => setPeriodFrom(Number(e.target.value))}
+            >
+              {periods.map((p) => (
+                <option key={p.no} value={p.no}>
+                  第 {p.no} 节
+                </option>
+              ))}
+            </select>
+            <span className="recur__summary">–</span>
+            <select
+              className="form__select"
+              aria-label="结束节次"
+              value={periodTo}
+              onChange={(e) => setPeriodTo(Number(e.target.value))}
+            >
+              {periods.map((p) => (
+                <option key={p.no} value={p.no}>
+                  第 {p.no} 节
+                </option>
+              ))}
+            </select>
+            {periodRange ? (
+              <span className="recur__summary" data-testid="period-preview">
+                {periodRange.startTime}–{periodRange.endTime}
+              </span>
+            ) : null}
           </div>
         ) : (
           <div className="form__row form__row--times">
@@ -287,51 +369,6 @@ export function ScheduleForm({
             ) : null}
           </div>
         )}
-
-        {mode === 'range' && periods.length > 0 ? (
-          <div className="form__row form__row--periods" data-testid="period-fill">
-            <span className="form__label form__label--inline">按节次</span>
-            <select
-              className="form__select"
-              aria-label="开始节次"
-              value={periodFrom}
-              onChange={(e) => {
-                setPeriodFrom(Number(e.target.value));
-                clearPeriod();
-              }}
-            >
-              {periods.map((p) => (
-                <option key={p.no} value={p.no}>
-                  第 {p.no} 节
-                </option>
-              ))}
-            </select>
-            <span className="recur__summary">–</span>
-            <select
-              className="form__select"
-              aria-label="结束节次"
-              value={periodTo}
-              onChange={(e) => {
-                setPeriodTo(Number(e.target.value));
-                clearPeriod();
-              }}
-            >
-              {periods.map((p) => (
-                <option key={p.no} value={p.no}>
-                  第 {p.no} 节
-                </option>
-              ))}
-            </select>
-            <button type="button" className="btn btn--small" onClick={applyPeriod}>
-              填入
-            </button>
-            {appliedPeriod ? (
-              <span className="recur__summary" data-testid="period-applied">
-                已按第 {appliedPeriod.from}–{appliedPeriod.to} 节
-              </span>
-            ) : null}
-          </div>
-        ) : null}
 
         {initial ? null : (
           <>
