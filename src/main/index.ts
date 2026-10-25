@@ -63,7 +63,12 @@ void app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
+  // 关闭最后窗口 = 退出（M1 的临时行为；托盘形态在 M4 落地后这里不 quit）。
+  app.quit();
+});
+
+// 数据库只在真正退出时关闭：关窗口 ≠ 退出进程，提前关会让仍注册着的 IPC handler 用到已关闭实例。
+app.on('will-quit', () => {
   db?.close();
   db = null;
-  app.quit();
 });

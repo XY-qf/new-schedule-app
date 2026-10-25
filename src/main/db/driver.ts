@@ -63,7 +63,12 @@ export function wrapDatabase(raw: DatabaseType): Db {
         raw.exec('COMMIT');
         return result;
       } catch (error) {
-        raw.exec('ROLLBACK');
+        // 回滚本身失败也不能顶掉原始错误——那会让「为什么失败」彻底丢失。
+        try {
+          raw.exec('ROLLBACK');
+        } catch {
+          /* 保留原始错误 */
+        }
         throw error;
       }
     },

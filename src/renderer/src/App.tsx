@@ -29,12 +29,24 @@ export function App(): JSX.Element {
 
   const changeView = (next: ViewName): void => {
     setView(next);
-    void window.api?.window.setView({ view: next });
+    window.api?.window.setView({ view: next }).catch((error: unknown) => {
+      console.error('切换窗口尺寸失败', error);
+    });
   };
 
   return (
     <div className="app">
-      <TitleBar onMinimize={() => {}} onMaximize={() => {}} onClose={() => {}} />
+      <TitleBar
+        onMinimize={() => {
+          void window.api?.window.minimize();
+        }}
+        onMaximize={() => {
+          void window.api?.window.maximizeToggle();
+        }}
+        onClose={() => {
+          void window.api?.window.closeToTray();
+        }}
+      />
       <TabBar active={view} onChange={changeView} />
       <main className="app__body app__body--calendar">
         {view === 'calendar' ? (

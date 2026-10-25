@@ -1,6 +1,6 @@
 import type { IpcRenderer } from 'electron';
 import { CHANNELS } from '../shared/ipc-contract';
-import type { Category, Schedule } from '../shared/types';
+import type { Category, OccurrenceView, Schedule } from '../shared/types';
 import type { ScheduleInput } from '../main/repo/schedules';
 
 export type ViewName = 'calendar' | 'todo';
@@ -22,13 +22,21 @@ export interface Api {
     }) => Promise<void>;
   };
   schedules: {
-    listRange: (input: { start: string; end: string }) => Promise<unknown[]>;
+    listRange: (input: { start: string; end: string }) => Promise<OccurrenceView[]>;
     create: (input: ScheduleInput) => Promise<Schedule>;
-    update: (input: { id: string; patch: Partial<ScheduleInput> }) => Promise<Schedule>;
-    delete: (input: { id: string }) => Promise<void>;
+    update: (input: {
+      id: string;
+      patch: Partial<ScheduleInput> & { isDone?: boolean };
+      /** M2 用：只改这一次 / 改整个序列 */
+      scope?: 'one' | 'series';
+    }) => Promise<Schedule>;
+    delete: (input: { id: string; scope?: 'one' | 'series' }) => Promise<void>;
   };
   window: {
     setView: (payload: { view: ViewName }) => Promise<unknown>;
+    minimize: () => Promise<void>;
+    maximizeToggle: () => Promise<boolean | null>;
+    closeToTray: () => Promise<void>;
   };
 }
 
@@ -49,6 +57,9 @@ export function buildApi(ipc: Pick<IpcRenderer, 'invoke'>): Api {
     },
     window: {
       setView: (payload) => ipc.invoke(CHANNELS.windowSetView, payload),
+      minimize: () => ipc.invoke(CHANNELS.windowMinimize),
+      maximizeToggle: () => ipc.invoke(CHANNELS.windowMaximizeToggle),
+      closeToTray: () => ipc.invoke(CHANNELS.windowCloseToTray),
     },
   };
 }

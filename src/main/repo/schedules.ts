@@ -112,44 +112,64 @@ export function updateSchedule(
   id: string,
   patch: Partial<ScheduleInput> & { isDone?: boolean },
 ): Schedule {
-  const cur = getSchedule(db, id);
-  const now = nowLocal();
+  // 读整行 → 写回，必须在同一个事务里，否则两次更新交错会按旧快照覆盖对方的改动。
+  return db.transaction(() => {
+    const cur = getSchedule(db, id);
+    const now = nowLocal();
 
-  const isDone = patch.isDone ?? cur.isDone;
-  const doneAt = isDone ? (cur.doneAt ?? now) : null;
+    const isDone = patch.isDone ?? cur.isDone;
+    const doneAt = isDone ? (cur.doneAt ?? now) : null;
 
-  db.prepare(
-    `UPDATE schedules SET
-       title = ?, category_id = ?, time_type = ?, is_all_day = ?,
-       start_at = ?, end_at = ?, recurrence_id = ?,
-       period_start = ?, period_end = ?, sort_hint = ?,
-       location = ?, note = ?, is_in_todo = ?, is_done = ?, done_at = ?, updated_at = ?
-     WHERE id = ?`,
-  ).run(
-    patch.title ?? cur.title,
-    patch.categoryId ?? cur.categoryId,
-    patch.timeType ?? cur.timeType,
-    (patch.isAllDay ?? cur.isAllDay) ? 1 : 0,
-    patch.startAt !== undefined ? patch.startAt : cur.startAt,
-    patch.endAt !== undefined ? patch.endAt : cur.endAt,
-    patch.recurrenceId !== undefined ? patch.recurrenceId : cur.recurrenceId,
-    patch.periodStart !== undefined ? patch.periodStart : cur.periodStart,
-    patch.periodEnd !== undefined ? patch.periodEnd : cur.periodEnd,
-    patch.sortHint !== undefined ? patch.sortHint : cur.sortHint,
-    patch.location !== undefined ? patch.location : cur.location,
-    patch.note !== undefined ? patch.note : cur.note,
-    (patch.isInTodo ?? cur.isInTodo) ? 1 : 0,
-    isDone ? 1 : 0,
-    doneAt,
-    now,
-    id,
-  );
+    db.prepare(
+      `UPDATE schedules SET
+         title = ?, category_id = ?, time_type = ?, is_all_day = ?,
+         start_at = ?, end_at = ?, recurrence_id = ?,
+         period_start = ?, period_end = ?, sort_hint = ?,
+         location = ?, note = ?, is_in_todo = ?, is_done = ?, done_at = ?, updated_at = ?
+       WHERE id = ?`,
+    ).run(
+      patch.title ?? cur.title,
+      patch.categoryId ?? cur.categoryId,
+      patch.timeType ?? cur.timeType,
+      (patch.isAllDay ?? cur.isAllDay) ? 1 : 0,
+      patch.startAt !== undefined ? patch.startAt : cur.startAt,
+      patch.endAt !== undefined ? patch.endAt : cur.endAt,
+      patch.recurrenceId !== undefined ? patch.recurrenceId : cur.recurrenceId,
+      patch.periodStart !== undefined ? patch.periodStart : cur.periodStart,
+      patch.periodEnd !== undefined ? patch.periodEnd : cur.periodEnd,
+      patch.sortHint !== undefined ? patch.sortHint : cur.sortHint,
+      patch.location !== undefined ? patch.location : cur.location,
+      patch.note !== undefined ? patch.note : cur.note,
+      (patch.isInTodo ?? cur.isInTodo) ? 1 : 0,
+      isDone ? 1 : 0,
+      doneAt,
+      now,
+      id,
+    );
 
-  return getSchedule(db, id);
+    return getSchedule(db, id);
+  });
 }
 
+/**
+ * 删除日程。存在性先校验（与 update 的语义对齐），
+ * 并在同一事务里清掉不再被引用的重复规则，避免留孤儿行。
+ */
 export function deleteSchedule(db: Db, id: string): void {
-  db.prepare('DELETE FROM schedules WHERE id = ?').run(id);
+  const target = getSchedule(db, id);
+  const recurrenceId = target.recurrenceId;
+
+  db.transaction(() => {
+    db.prepare('DELETE FROM schedules WHERE id = ?').run(id);
+    if (recurrenceId) {
+      const left = db
+        .prepare('SELECT COUNT(*) AS c FROM schedules WHERE recurrence_id = ?')
+        .get(recurrenceId) as { c: number };
+      if (left.c === 0) {
+        db.prepare('DELETE FROM recurrences WHERE id = ?').run(recurrenceId);
+      }
+    }
+  });
 }
 
 /**
@@ -178,7 +198,7 @@ export function listSchedulesByRange(db: Db, start: string, end: string): Schedu
     .prepare(
       `SELECT s.* FROM schedules s
        JOIN recurrences r ON r.id = s.recurrence_id
-       WHERE s.start_at < ?
+       WHERE COALESCE(s.start_at, s.end_at) < ?
          AND (r.until_date IS NULL OR r.until_date >= ?)`,
     )
     .all(to, start) as ScheduleRow[];

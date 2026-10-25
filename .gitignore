@@ -12,3 +12,5 @@ Thumbs.db
 .superpowers/
 *.logtest-results/
 playwright-report/
+week-shot.png
+shot.spec.ts

@@ -97,3 +97,28 @@ describe('expandOccurrences', () => {
     expect(out).toHaveLength(0);
   });
 });
+
+describe('expandOccurrences · 跨窗口（审查 Critical 1）', () => {
+  it('跨天日程锚点在窗口之前时仍然可见', () => {
+    const trip: Schedule = {
+      ...sched,
+      title: '三天旅行',
+      isAllDay: true,
+      startAt: '2026-10-18T00:00:00',
+      endAt: '2026-10-20T00:00:00',
+    };
+    const out = expandOccurrences(trip, null, '2026-10-19', '2026-10-25');
+    expect(out).toHaveLength(1);
+    expect(out[0]!.startAt).toBe('2026-10-18T00:00:00');
+  });
+
+  it('完全在窗口之前的日程不返回', () => {
+    const trip: Schedule = {
+      ...sched,
+      isAllDay: true,
+      startAt: '2026-10-10T00:00:00',
+      endAt: '2026-10-12T00:00:00',
+    };
+    expect(expandOccurrences(trip, null, '2026-10-19', '2026-10-25')).toHaveLength(0);
+  });
+});

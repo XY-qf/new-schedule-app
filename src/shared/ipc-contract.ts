@@ -12,6 +12,9 @@ export const CHANNELS = {
   schedulesUpdate: 'schedules:update',
   schedulesDelete: 'schedules:delete',
   windowSetView: 'window:setView',
+  windowMinimize: 'window:minimize',
+  windowMaximizeToggle: 'window:maximizeToggle',
+  windowCloseToTray: 'window:closeToTray',
 } as const;
 
 export type Channel = (typeof CHANNELS)[keyof typeof CHANNELS];

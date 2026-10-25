@@ -91,6 +91,11 @@
   min-height: 0;
   display: flex;
   overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.cal__body::-webkit-scrollbar {
+  width: 0;
 }
 
 .cal__axis {

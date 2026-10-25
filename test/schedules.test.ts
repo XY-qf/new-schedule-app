@@ -134,3 +134,21 @@ describe('日程仓储 · 范围查询的两个坑（契约审查 C1/C2）', () 
     expect(listSchedulesByRange(db, ...WEEK)).toHaveLength(1);
   });
 });
+
+describe('日程仓储 · 重复的只有结束时间（审查 Critical 1）', () => {
+  it('start_at 为空的重复日程能被取回', () => {
+    db.exec("INSERT INTO recurrences (id,freq) VALUES ('r2','weekly')");
+    createSchedule(db, {
+      title: '每周截止提醒',
+      categoryId: 'cat-course',
+      timeType: 'end_only',
+      isAllDay: false,
+      startAt: null,
+      endAt: '2026-09-02T23:59:00',
+      recurrenceId: 'r2',
+    });
+
+    const rows = listSchedulesByRange(db, '2026-10-19', '2026-10-25');
+    expect(rows.map((r) => r.title)).toEqual(['每周截止提醒']);
+  });
+});

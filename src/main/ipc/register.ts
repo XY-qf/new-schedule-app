@@ -59,4 +59,21 @@ export function registerIpcHandlers(db: Db): void {
     win.setContentBounds(next);
     return next;
   });
+
+  ipcMain.handle(CHANNELS.windowMinimize, (event) => {
+    BrowserWindow.fromWebContents(event.sender)?.minimize();
+  });
+
+  ipcMain.handle(CHANNELS.windowMaximizeToggle, (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    if (!win) return null;
+    if (win.isMaximized()) win.unmaximize();
+    else win.maximize();
+    return win.isMaximized();
+  });
+
+  // FR-12.1：关闭按钮 = 缩到托盘，不是退出。托盘本体在 M4，这里先隐藏窗口。
+  ipcMain.handle(CHANNELS.windowCloseToTray, (event) => {
+    BrowserWindow.fromWebContents(event.sender)?.hide();
+  });
 }

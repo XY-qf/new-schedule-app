@@ -68,7 +68,9 @@ export function expandOccurrences(
   });
 
   if (!recurrence) {
-    if (anchorDate < rangeStart || anchorDate > rangeEnd) return [];
+    // 区间相交，不是「锚点落在窗口内」：跨天日程的锚点可能早于窗口（审查 Critical 1）。
+    const endDate = addDays(anchorDate, endOffsetDays);
+    if (endDate < rangeStart || anchorDate > rangeEnd) return [];
     return [make(anchorDate)];
   }
 

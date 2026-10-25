@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { Category, OccurrenceView } from '../../../shared/types';
 import { addDays } from '../../../shared/time';
 import { DayColumn } from './DayColumn';
@@ -18,6 +18,23 @@ function anchorDate(item: OccurrenceView): string {
 }
 
 export function WeekView({ weekStart, occurrences, today }: WeekViewProps): JSX.Element {
+  const bodyRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    // 打开时定位到 07:00，而不是 00:00（PRD FR-1.2）。
+    // 内容高度要等布局完成才准，所以放到两帧之后再滚，否则 scrollTop 会被钳回 0。
+    const el = bodyRef.current;
+    if (!el) return;
+    const apply = (): void => {
+      el.scrollTop = 7 * 48;
+    };
+    const raf1 = requestAnimationFrame(() => {
+      apply();
+      requestAnimationFrame(apply);
+    });
+    return () => cancelAnimationFrame(raf1);
+  }, [occurrences]);
+
   const dates = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
     [weekStart],
@@ -61,7 +78,7 @@ export function WeekView({ weekStart, occurrences, today }: WeekViewProps): JSX.
         ))}
       </div>
 
-      <div className="cal__body">
+      <div className="cal__body" ref={bodyRef}>
         <TimeAxis />
         {dates.map((date, i) => (
           <DayColumn
