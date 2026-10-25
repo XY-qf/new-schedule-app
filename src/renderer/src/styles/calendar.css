@@ -368,6 +368,7 @@
 }
 
 .month__cell {
+  border: 0;
   border-left: 1px solid var(--color-grid);
   border-bottom: 1px solid var(--color-grid);
   padding: 4px 5px;
