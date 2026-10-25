@@ -1,5 +1,8 @@
 import type { JSX } from 'react';
 import { ThemeSection, type ThemeChoice } from './theme';
+import { PeriodSection } from './PeriodSection';
+import { CategorySection } from './CategorySection';
+import { DataSection, SystemSection } from './DataSection';
 
 export interface SettingsPanelProps {
   theme: ThemeChoice;
@@ -36,22 +39,22 @@ export function SettingsPanel({ theme, onThemeChange, onClose }: SettingsPanelPr
 
           <section className="set__group">
             <h3 className="set__group-title">作息时间表</h3>
-            <p className="set__hint">节次增删改、一键恢复默认 —— 建设中。</p>
+            <PeriodSection />
           </section>
 
           <section className="set__group">
             <h3 className="set__group-title">分类管理</h3>
-            <p className="set__hint">增删改分类、改色、提醒总开关 —— 建设中。</p>
+            <CategorySection />
           </section>
 
           <section className="set__group">
             <h3 className="set__group-title">数据</h3>
-            <p className="set__hint">导出备份 / 导入恢复 / 打开数据文件夹 —— 建设中。</p>
+            <DataSection />
           </section>
 
           <section className="set__group">
             <h3 className="set__group-title">系统</h3>
-            <p className="set__hint">开机自启 —— 建设中。</p>
+            <SystemSection />
           </section>
         </div>
       </div>

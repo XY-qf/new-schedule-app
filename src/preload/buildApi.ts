@@ -49,6 +49,7 @@ export interface Api {
   };
   periods: {
     list: () => Promise<Period[]>;
+    replace: (input: { periods: Period[] }) => Promise<Period[]>;
   };
   countdowns: {
     list: (input: { today: string }) => Promise<Countdown[]>;
@@ -64,6 +65,17 @@ export interface Api {
       dayOffset?: number | null;
       atTime?: string | null;
     }) => Promise<Reminder | null>;
+  };
+  backup: {
+    export: () => Promise<string | null>;
+    import: () => Promise<string | null>;
+    dataDir: () => Promise<string>;
+    openFolder: () => Promise<void>;
+  };
+  system: {
+    isLaunchAtLogin: () => Promise<boolean>;
+    setLaunchAtLogin: (input: { enabled: boolean }) => Promise<boolean>;
+    version: () => Promise<string>;
   };
   mini: {
     open: () => Promise<void>;
@@ -113,6 +125,7 @@ export function buildApi(ipc: Pick<IpcRenderer, 'invoke'>): Api {
     },
     periods: {
       list: () => ipc.invoke(CHANNELS.periodsList),
+      replace: (input) => ipc.invoke(CHANNELS.periodsReplace, input),
     },
     countdowns: {
       list: (input) => ipc.invoke(CHANNELS.countdownsList, input),
@@ -123,6 +136,17 @@ export function buildApi(ipc: Pick<IpcRenderer, 'invoke'>): Api {
     reminders: {
       get: (input) => ipc.invoke(CHANNELS.remindersGet, input),
       set: (input) => ipc.invoke(CHANNELS.remindersSet, input),
+    },
+    backup: {
+      export: () => ipc.invoke(CHANNELS.backupExport),
+      import: () => ipc.invoke(CHANNELS.backupImport),
+      dataDir: () => ipc.invoke(CHANNELS.backupDataDir),
+      openFolder: () => ipc.invoke(CHANNELS.backupOpenFolder),
+    },
+    system: {
+      isLaunchAtLogin: () => ipc.invoke(CHANNELS.systemLaunchAtLoginGet),
+      setLaunchAtLogin: (input) => ipc.invoke(CHANNELS.systemLaunchAtLoginSet, input),
+      version: () => ipc.invoke(CHANNELS.systemVersion),
     },
     mini: {
       open: () => ipc.invoke(CHANNELS.miniOpen),

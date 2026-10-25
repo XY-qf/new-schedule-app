@@ -17,14 +17,23 @@ import {
 } from '../repo/schedules';
 import { listOccurrenceViews } from '../service/calendar';
 import { upsertException } from '../repo/exceptions';
-import { listPeriods } from '../repo/periods';
+import { listPeriods, replacePeriods, type Period } from '../repo/periods';
 import { closeMini } from '../miniWindow';
+import { backupBeforeRestore, exportBackup } from '../backup';
+import { isLaunchAtLogin, setLaunchAtLogin } from '../tray';
+import { app, dialog, shell } from 'electron';
+import { copyFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { createTask, deleteTask, setTaskDone, updateTask } from '../repo/tasks';
 import { listTodoItems } from '../service/todo';
 import { createCountdown, deleteCountdown, listCountdowns, updateCountdown } from '../repo/countdowns';
 import { getSetting, setSetting } from '../repo/settings';
 import { deleteReminder, listReminders, upsertReminder } from '../repo/reminders';
 import { boundsForView, type Rect, type ViewName } from '../window/bounds';
+
+function dbFile(): string {
+  return join(app.getPath('userData'), 'data', 'app.db');
+}
 
 export function registerIpcHandlers(db: Db): void {
   ipcMain.handle(CHANNELS.categoriesList, () => listCategories(db));
@@ -97,6 +106,10 @@ export function registerIpcHandlers(db: Db): void {
   );
 
   ipcMain.handle(CHANNELS.periodsList, () => listPeriods(db));
+  ipcMain.handle(CHANNELS.periodsReplace, (_e, payload: { periods: Period[] }) => {
+    replacePeriods(db, payload.periods);
+    return listPeriods(db);
+  });
 
   ipcMain.handle(
     CHANNELS.todoList,
@@ -172,6 +185,41 @@ export function registerIpcHandlers(db: Db): void {
       return upsertReminder(db, payload);
     },
   );
+
+  ipcMain.handle(CHANNELS.backupDataDir, () => dirname(dbFile()));
+  ipcMain.handle(CHANNELS.backupOpenFolder, () => {
+    void shell.openPath(dirname(dbFile()));
+  });
+  ipcMain.handle(CHANNELS.backupExport, async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const picked = await dialog.showOpenDialog(win ?? undefined!, {
+      title: '选择备份保存位置',
+      properties: ['openDirectory', 'createDirectory'],
+    });
+    if (picked.canceled || picked.filePaths.length === 0) return null;
+    return exportBackup(db, dbFile(), picked.filePaths[0]!);
+  });
+  ipcMain.handle(CHANNELS.backupImport, async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const picked = await dialog.showOpenDialog(win ?? undefined!, {
+      title: '选择要恢复的备份文件',
+      properties: ['openFile'],
+      filters: [{ name: '数据库备份', extensions: ['db'] }],
+    });
+    if (picked.canceled || picked.filePaths.length === 0) return null;
+
+    // 恢复前先把当前库留一份，误操作还能退回
+    const safety = backupBeforeRestore(db, dbFile());
+    db.close();
+    copyFileSync(picked.filePaths[0]!, dbFile());
+    return `已恢复。当前数据已备份到 ${safety}，请重启应用。`;
+  });
+  ipcMain.handle(CHANNELS.systemLaunchAtLoginGet, () => isLaunchAtLogin());
+  ipcMain.handle(CHANNELS.systemLaunchAtLoginSet, (_e, payload: { enabled: boolean }) => {
+    setLaunchAtLogin(payload.enabled);
+    return isLaunchAtLogin();
+  });
+  ipcMain.handle(CHANNELS.systemVersion, () => app.getVersion());
 
   ipcMain.handle(CHANNELS.miniClose, () => {
     closeMini();
