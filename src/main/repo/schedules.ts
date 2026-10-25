@@ -76,9 +76,15 @@ export function getSchedule(db: Db, id: string): Schedule {
   return toSchedule(row);
 }
 
-export function createSchedule(db: Db, input: ScheduleInput): Schedule {
+export function createSchedule(
+  db: Db,
+  input: ScheduleInput & { recurrence?: RecurrenceDraft | null },
+): Schedule {
   const id = randomUUID();
   const now = nowLocal();
+  const recurrenceId = input.recurrence
+    ? insertRecurrence(db, input.recurrence)
+    : (input.recurrenceId ?? null);
 
   db.prepare(
     `INSERT INTO schedules
@@ -93,7 +99,7 @@ export function createSchedule(db: Db, input: ScheduleInput): Schedule {
     input.isAllDay ? 1 : 0,
     input.startAt,
     input.endAt,
-    input.recurrenceId ?? null,
+    recurrenceId,
     input.periodStart ?? null,
     input.periodEnd ?? null,
     input.sortHint ?? null,
@@ -105,6 +111,27 @@ export function createSchedule(db: Db, input: ScheduleInput): Schedule {
   );
 
   return getSchedule(db, id);
+}
+
+/** 写入一条重复规则，返回它的 id。byWeekday 用逗号串存（与读取端一致）。 */
+export function insertRecurrence(db: Db, draft: RecurrenceDraft): string {
+  const id = randomUUID();
+  const weekdays =
+    draft.byWeekday && draft.byWeekday.length > 0 ? draft.byWeekday.join(',') : null;
+
+  db.prepare(
+    `INSERT INTO recurrences (id,freq,interval,by_weekday,by_monthday,until_date)
+     VALUES (?,?,?,?,?,?)`,
+  ).run(
+    id,
+    draft.freq,
+    draft.interval ?? null,
+    weekdays,
+    draft.freq === 'monthly' ? (draft.byMonthday ?? 1) : null,
+    draft.untilDate ?? null,
+  );
+
+  return id;
 }
 
 export function updateSchedule(

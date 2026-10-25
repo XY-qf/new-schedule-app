@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { expandOccurrences, type Recurrence } from '../src/shared/recurrence';
+import { describeRecurrence, expandOccurrences, type Recurrence } from '../src/shared/recurrence';
 import type { Schedule } from '../src/shared/types';
 
 const sched: Schedule = {
@@ -120,5 +120,29 @@ describe('expandOccurrences · 跨窗口（审查 Critical 1）', () => {
       endAt: '2026-10-12T00:00:00',
     };
     expect(expandOccurrences(trip, null, '2026-10-19', '2026-10-25')).toHaveLength(0);
+  });
+});
+
+describe('describeRecurrence（界面摘要）', () => {
+  it('不重复', () => {
+    expect(describeRecurrence(null)).toBe('不重复');
+  });
+
+  it('每天', () => {
+    expect(describeRecurrence({ freq: 'daily' })).toBe('每天');
+  });
+
+  it('每周指定星期几，按周一到周日排序', () => {
+    expect(describeRecurrence({ freq: 'weekly', byWeekday: [4, 2] })).toBe('每周 二、四');
+  });
+
+  it('每月指定几号 + 结束日期', () => {
+    expect(describeRecurrence({ freq: 'monthly', byMonthday: 15, untilDate: '2027-01-15' })).toBe(
+      '每月 15 日，直到 2027-01-15',
+    );
+  });
+
+  it('工作日', () => {
+    expect(describeRecurrence({ freq: 'weekdays' })).toBe('工作日');
   });
 });

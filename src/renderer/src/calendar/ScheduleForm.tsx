@@ -1,5 +1,7 @@
 import { useState, type JSX } from 'react';
 import type { Category, Schedule, TimeType } from '../../../shared/types';
+import type { RecurrenceDraft } from '../../../shared/recurrence';
+import { RecurrenceEditor } from './RecurrenceEditor';
 
 export interface ScheduleFormProps {
   categories: Category[];
@@ -51,6 +53,7 @@ export function ScheduleForm({
   const [endDate, setEndDate] = useState(
     initial?.isAllDay && initial.endAt ? initial.endAt.slice(0, 10) : '',
   );
+  const [recurrence, setRecurrence] = useState<RecurrenceDraft | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -118,7 +121,7 @@ export function ScheduleForm({
 
       const saved = initial
         ? await api.schedules.update({ id: initial.id, patch: payload })
-        : await api.schedules.create(payload);
+        : await api.schedules.create({ ...payload, recurrence });
 
       onSaved(saved);
     } catch (cause) {
@@ -235,6 +238,13 @@ export function ScheduleForm({
               />
             ) : null}
           </div>
+        )}
+
+        {initial ? null : (
+          <>
+            <div className="form__label">重复</div>
+            <RecurrenceEditor value={recurrence} onChange={setRecurrence} />
+          </>
         )}
 
         {hint ? (

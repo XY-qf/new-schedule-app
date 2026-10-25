@@ -152,3 +152,56 @@ describe('日程仓储 · 重复的只有结束时间（审查 Critical 1）', (
     expect(rows.map((r) => r.title)).toEqual(['每周截止提醒']);
   });
 });
+
+describe('重复规则写入（T17）', () => {
+  it('带重复规则创建日程时，同一事务里写入 recurrences 行', () => {
+    const s = createSchedule(db, {
+      title: '每周二四的课',
+      categoryId: 'cat-course',
+      timeType: 'range',
+      isAllDay: false,
+      startAt: '2026-10-20T08:00:00',
+      endAt: '2026-10-20T09:35:00',
+      recurrence: { freq: 'weekly', byWeekday: [2, 4] },
+    });
+
+    expect(s.recurrenceId).toBeTruthy();
+    const row = db.prepare('SELECT * FROM recurrences WHERE id = ?').get(s.recurrenceId) as {
+      freq: string;
+      by_weekday: string | null;
+      by_monthday: number | null;
+    };
+    expect(row.freq).toBe('weekly');
+    expect(row.by_weekday).toBe('2,4');
+    expect(row.by_monthday).toBeNull();
+  });
+
+  it('每月规则会记录几号', () => {
+    const s = createSchedule(db, {
+      title: '每月 15 号交房租',
+      categoryId: 'cat-life',
+      timeType: 'end_only',
+      isAllDay: false,
+      startAt: null,
+      endAt: '2026-10-15T23:59:00',
+      recurrence: { freq: 'monthly', byMonthday: 15 },
+    });
+    const row = db.prepare('SELECT * FROM recurrences WHERE id = ?').get(s.recurrenceId) as {
+      by_monthday: number | null;
+    };
+    expect(row.by_monthday).toBe(15);
+  });
+
+  it('不传 recurrence 时依然是单次日程', () => {
+    const s = createSchedule(db, {
+      title: '一次性',
+      categoryId: 'cat-course',
+      timeType: 'range',
+      isAllDay: false,
+      startAt: '2026-10-20T10:00:00',
+      endAt: '2026-10-20T11:00:00',
+    });
+    expect(s.recurrenceId).toBeNull();
+    expect(db.prepare('SELECT COUNT(*) c FROM recurrences').get()).toEqual({ c: 0 });
+  });
+});

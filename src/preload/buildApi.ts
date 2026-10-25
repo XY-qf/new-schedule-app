@@ -2,6 +2,7 @@ import type { IpcRenderer } from 'electron';
 import { CHANNELS } from '../shared/ipc-contract';
 import type { Category, OccurrenceView, Schedule } from '../shared/types';
 import type { ScheduleInput } from '../main/repo/schedules';
+import type { RecurrenceDraft } from '../shared/recurrence';
 
 export type ViewName = 'calendar' | 'todo';
 
@@ -24,7 +25,9 @@ export interface Api {
   schedules: {
     listRange: (input: { start: string; end: string }) => Promise<OccurrenceView[]>;
     get: (input: { id: string }) => Promise<Schedule>;
-    create: (input: ScheduleInput) => Promise<Schedule>;
+    create: (
+      input: ScheduleInput & { recurrence?: RecurrenceDraft | null },
+    ) => Promise<Schedule>;
     update: (input: {
       id: string;
       patch: Partial<ScheduleInput> & { isDone?: boolean };

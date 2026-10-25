@@ -123,3 +123,50 @@ export function expandOccurrences(
   }
   return out;
 }
+/** 界面上的重复规则草稿；提交时由主进程落成 recurrences 行。 */
+export interface RecurrenceDraft {
+  freq: Recurrence['freq'];
+  interval?: number | null;
+  byWeekday?: number[] | null;
+  byMonthday?: number | null;
+  untilDate?: string | null;
+}
+
+const WEEKDAY_NAMES = ['一', '二', '三', '四', '五', '六', '日'];
+
+const FREQ_LABEL: Record<Recurrence['freq'], string> = {
+  daily: '每天',
+  weekly: '每周',
+  biweekly: '每两周',
+  monthly: '每月',
+  weekdays: '工作日',
+  custom: '自定义',
+};
+
+/** 给界面用的一句话摘要，例如「每周 二、四，直到 2027-01-15」。 */
+export function describeRecurrence(rule: RecurrenceDraft | Recurrence | null): string {
+  if (!rule) return '不重复';
+
+  let text = FREQ_LABEL[rule.freq] ?? '不重复';
+
+  if (rule.freq === 'weekly' || rule.freq === 'custom') {
+    const days = rule.byWeekday ?? [];
+    if (days.length > 0) {
+      text += ` ${days
+        .slice()
+        .sort((a, b) => a - b)
+        .map((d) => WEEKDAY_NAMES[d - 1])
+        .join('、')}`;
+    }
+  }
+
+  if (rule.freq === 'monthly' && rule.byMonthday) {
+    text += ` ${rule.byMonthday} 日`;
+  }
+
+  if (rule.untilDate) {
+    text += `，直到 ${rule.untilDate}`;
+  }
+
+  return text;
+}
