@@ -8,6 +8,7 @@ import type { ViewMode } from './calendar/ViewSwitch';
 import { ScheduleForm } from './calendar/ScheduleForm';
 import { TodoView } from './todo/TodoView';
 import { TaskForm } from './todo/TaskForm';
+import { CountdownForm } from './todo/CountdownBlock';
 import {
   addDays,
   addMonths,
@@ -19,6 +20,7 @@ import {
 import type { Category, OccurrenceView, Schedule } from '../../shared/types';
 import type { Period } from '../../shared/periods';
 import type { TodoItem } from '../../shared/todo';
+import type { Countdown } from '../../main/repo/countdowns';
 
 export function App(): JSX.Element {
   const [view, setView] = useState<ViewName>('calendar');
@@ -37,6 +39,9 @@ export function App(): JSX.Element {
   const [todoItems, setTodoItems] = useState<TodoItem[]>([]);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const [countdowns, setCountdowns] = useState<Countdown[]>([]);
+  const [countdownCollapsed, setCountdownCollapsed] = useState(true);
+  const [countdownFormOpen, setCountdownFormOpen] = useState(false);
 
   const weekStart = useMemo(() => startOfWeek(anchor), [anchor]);
 
@@ -76,13 +81,19 @@ export function App(): JSX.Element {
     const api = window.api;
     if (!api) return;
     try {
-      const items = await api.todo.list({
-        today: todayLocal(),
-        // null 表示「全部」，必须转成 undefined：服务层里 null 是「只看无分类」的意思。
-        categoryId: activeCategory ?? undefined,
-        includeDone: true,
-      });
+      const [items, cd, collapsedSetting] = await Promise.all([
+        api.todo.list({
+          today: todayLocal(),
+          // null 表示「全部」，必须转成 undefined：服务层里 null 是「只看无分类」的意思。
+          categoryId: activeCategory ?? undefined,
+          includeDone: true,
+        }),
+        api.countdowns.list({ today: todayLocal() }),
+        api.settings.get({ key: 'countdown_collapsed' }),
+      ]);
       setTodoItems(items);
+      setCountdowns(cd);
+      setCountdownCollapsed(collapsedSetting !== 'false');
       setLoadError(null);
     } catch (cause) {
       setLoadError(cause instanceof Error ? cause.message : String(cause));
@@ -292,6 +303,19 @@ export function App(): JSX.Element {
             }}
             onCreateTask={() => setTaskFormOpen(true)}
             onBackToCalendar={() => changeView('calendar')}
+            today={todayLocal()}
+            countdowns={countdowns}
+            countdownCollapsed={countdownCollapsed}
+            onToggleCountdown={() => {
+              const next = !countdownCollapsed;
+              setCountdownCollapsed(next);
+              void window.api?.settings.set({
+                key: 'countdown_collapsed',
+                value: next ? 'true' : 'false',
+              });
+            }}
+            onCreateCountdown={() => setCountdownFormOpen(true)}
+            onOpenCountdown={() => setCountdownFormOpen(true)}
           />
         )}
 
@@ -333,6 +357,17 @@ export function App(): JSX.Element {
               flash('已添加任务');
             }}
             onCancel={() => setTaskFormOpen(false)}
+          />
+        ) : null}
+
+        {countdownFormOpen ? (
+          <CountdownForm
+            onSaved={() => {
+              setCountdownFormOpen(false);
+              void loadTodo();
+              flash('已添加重要日');
+            }}
+            onCancel={() => setCountdownFormOpen(false)}
           />
         ) : null}
       </main>

@@ -54,6 +54,7 @@ const renderTodo = (overrides: Partial<Parameters<typeof TodoView>[0]> = {}) =>
       onOpen={noop}
       onCreateTask={noop}
       onBackToCalendar={noop}
+      today="2026-10-26"
       {...overrides}
     />,
   );

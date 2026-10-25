@@ -4,6 +4,7 @@ import type { Category, OccurrenceView, Schedule } from '../shared/types';
 import type { Period } from '../shared/periods';
 import type { TodoItem } from '../shared/todo';
 import type { Task } from '../main/repo/tasks';
+import type { Countdown } from '../main/repo/countdowns';
 import type { ScheduleInput } from '../main/repo/schedules';
 import type { RecurrenceDraft } from '../shared/recurrence';
 
@@ -48,6 +49,16 @@ export interface Api {
   periods: {
     list: () => Promise<Period[]>;
   };
+  countdowns: {
+    list: (input: { today: string }) => Promise<Countdown[]>;
+    create: (input: { title: string; targetDate: string; repeatYearly?: boolean }) => Promise<Countdown>;
+    update: (input: { id: string; patch: Partial<Countdown> }) => Promise<Countdown>;
+    remove: (input: { id: string }) => Promise<void>;
+  };
+  settings: {
+    get: (input: { key: string }) => Promise<string | null>;
+    set: (input: { key: string; value: string }) => Promise<void>;
+  };
   todo: {
     list: (input: { today: string; categoryId?: string | null; includeDone?: boolean }) => Promise<TodoItem[]>;
   };
@@ -84,6 +95,16 @@ export function buildApi(ipc: Pick<IpcRenderer, 'invoke'>): Api {
     },
     periods: {
       list: () => ipc.invoke(CHANNELS.periodsList),
+    },
+    countdowns: {
+      list: (input) => ipc.invoke(CHANNELS.countdownsList, input),
+      create: (input) => ipc.invoke(CHANNELS.countdownsCreate, input),
+      update: (input) => ipc.invoke(CHANNELS.countdownsUpdate, input),
+      remove: (input) => ipc.invoke(CHANNELS.countdownsDelete, input),
+    },
+    settings: {
+      get: (input) => ipc.invoke(CHANNELS.settingsGet, input),
+      set: (input) => ipc.invoke(CHANNELS.settingsSet, input),
     },
     todo: {
       list: (input) => ipc.invoke(CHANNELS.todoList, input),

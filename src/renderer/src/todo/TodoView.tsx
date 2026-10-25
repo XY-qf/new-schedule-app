@@ -2,6 +2,8 @@ import { useState, type JSX } from 'react';
 import type { Category } from '../../../shared/types';
 import type { TodoItem } from '../../../shared/todo';
 import { CategoryChips } from './CategoryChips';
+import { CountdownBlock } from './CountdownBlock';
+import type { Countdown } from '../../../main/repo/countdowns';
 import { TodoRow } from './TodoRow';
 
 export interface TodoViewProps {
@@ -14,6 +16,12 @@ export interface TodoViewProps {
   onOpen: (item: TodoItem) => void;
   onCreateTask: () => void;
   onBackToCalendar: () => void;
+  today: string;
+  countdowns?: Countdown[];
+  countdownCollapsed?: boolean;
+  onToggleCountdown?: () => void;
+  onCreateCountdown?: () => void;
+  onOpenCountdown?: (item: Countdown) => void;
 }
 
 export function TodoView({
@@ -26,6 +34,12 @@ export function TodoView({
   onOpen,
   onCreateTask,
   onBackToCalendar,
+  today,
+  countdowns = [],
+  countdownCollapsed = true,
+  onToggleCountdown = () => {},
+  onCreateCountdown = () => {},
+  onOpenCountdown = () => {},
 }: TodoViewProps): JSX.Element {
   const [showDone, setShowDone] = useState(false);
   const active = items.filter((i) => !i.isDone);
@@ -69,6 +83,14 @@ export function TodoView({
               : null}
           </div>
         ) : null}
+        <CountdownBlock
+          items={countdowns}
+          today={today}
+          collapsed={countdownCollapsed}
+          onToggleCollapse={onToggleCountdown}
+          onCreate={onCreateCountdown}
+          onOpen={onOpenCountdown}
+        />
       </div>
 
       <div className="todo__footer">

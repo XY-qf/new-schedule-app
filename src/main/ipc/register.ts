@@ -20,6 +20,8 @@ import { upsertException } from '../repo/exceptions';
 import { listPeriods } from '../repo/periods';
 import { createTask, deleteTask, setTaskDone } from '../repo/tasks';
 import { listTodoItems } from '../service/todo';
+import { createCountdown, deleteCountdown, listCountdowns, updateCountdown } from '../repo/countdowns';
+import { getSetting, setSetting } from '../repo/settings';
 import { boundsForView, type Rect, type ViewName } from '../window/bounds';
 
 export function registerIpcHandlers(db: Db): void {
@@ -121,6 +123,29 @@ export function registerIpcHandlers(db: Db): void {
       payload: { id: string; occurrenceStart?: string; isDone: boolean },
     ) => setScheduleDone(db, payload.id, payload.isDone, payload.occurrenceStart),
   );
+
+  ipcMain.handle(CHANNELS.countdownsList, (_e, payload: { today: string }) =>
+    listCountdowns(db, payload.today),
+  );
+  ipcMain.handle(
+    CHANNELS.countdownsCreate,
+    (
+      _e,
+      input: { title: string; targetDate: string; repeatYearly?: boolean; note?: string | null },
+    ) => createCountdown(db, input),
+  );
+  ipcMain.handle(
+    CHANNELS.countdownsUpdate,
+    (_e, payload: { id: string; patch: Parameters<typeof updateCountdown>[2] }) =>
+      updateCountdown(db, payload.id, payload.patch),
+  );
+  ipcMain.handle(CHANNELS.countdownsDelete, (_e, payload: { id: string }) => {
+    deleteCountdown(db, payload.id);
+  });
+  ipcMain.handle(CHANNELS.settingsGet, (_e, payload: { key: string }) => getSetting(db, payload.key));
+  ipcMain.handle(CHANNELS.settingsSet, (_e, payload: { key: string; value: string }) => {
+    setSetting(db, payload.key, payload.value);
+  });
 
   ipcMain.handle(CHANNELS.windowSetView, (event, payload: { view: ViewName }) => {
     const win = BrowserWindow.fromWebContents(event.sender);
