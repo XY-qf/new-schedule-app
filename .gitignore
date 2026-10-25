@@ -10,4 +10,5 @@ release/
 .DS_Store
 Thumbs.db
 .superpowers/
-*.log
+*.logtest-results/
+playwright-report/
