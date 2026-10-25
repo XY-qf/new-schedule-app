@@ -1,0 +1,2 @@
+
+SCREEN {"workArea":{"x":0,"y":0,"width":1707,"height":1019},"size":{"width":1707,"height":1067},"scaleFactor":1.5,"actual":{"x":360,"y":189,"width":986,"height":663},"bounds":{"x":353,"y":159,"width":1001,"height":701}}

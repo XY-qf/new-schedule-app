@@ -1,3 +1,4 @@
-import { contextBridge } from 'electron';
+import { contextBridge, ipcRenderer } from 'electron';
+import { buildApi } from './buildApi';
 
-contextBridge.exposeInMainWorld('api', {});
+contextBridge.exposeInMainWorld('api', buildApi(ipcRenderer));

@@ -16,6 +16,12 @@ function cleanEnv(): Record<string, string> {
   return env;
 }
 
+/**
+ * 150% 缩放下 Electron 会把窗口尺寸取整，实测 1000 → 1002、700 → 702。
+ * 所以断言尺寸用容差，而不是精确相等。
+ */
+const TOLERANCE = 4;
+
 test('启动即为日历尺寸，切到待办变窄', async () => {
   const app = await electron.launch({
     executablePath: electronPath,
@@ -24,12 +30,11 @@ test('启动即为日历尺寸，切到待办变窄', async () => {
   });
   const page = await app.firstWindow();
 
-  const size = await app.evaluate(({ BrowserWindow }) => {
-    const w = BrowserWindow.getAllWindows()[0];
-    return w!.getContentBounds();
-  });
-  expect(size.width).toBe(1000);
-  expect(size.height).toBe(700);
+  const size = await app.evaluate(({ BrowserWindow }) =>
+    BrowserWindow.getAllWindows()[0]!.getContentBounds(),
+  );
+  expect(Math.abs(size.width - 1000)).toBeLessThanOrEqual(TOLERANCE);
+  expect(Math.abs(size.height - 700)).toBeLessThanOrEqual(TOLERANCE);
 
   await page.getByRole('tab', { name: '待办' }).click();
 
@@ -38,9 +43,9 @@ test('启动即为日历尺寸，切到待办变窄', async () => {
       const b = await app.evaluate(({ BrowserWindow }) =>
         BrowserWindow.getAllWindows()[0]!.getContentBounds(),
       );
-      return `${b.width}x${b.height}`;
+      return `${Math.abs(b.width - 400) <= TOLERANCE && Math.abs(b.height - 822) <= TOLERANCE}`;
     })
-    .toBe('400x822');
+    .toBe('true');
 
   await app.close();
 });

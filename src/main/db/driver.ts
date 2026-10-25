@@ -1,16 +1,7 @@
-import { createRequire } from 'node:module';
-import type { DatabaseSync, StatementSync } from 'node:sqlite';
-
-/**
- * Vite 5 的内置模块判断不认带前缀的 `node:sqlite`，静态 import 会在测试环境里
- * 被当成 npm 包解析而报错。用 createRequire 在运行时取，绕过静态分析。
- * 类型仍走 `import type`（编译期擦除，不产生运行时依赖）。
- */
-const nodeRequire = createRequire(process.execPath);
-export const sqlite = nodeRequire('node:sqlite') as typeof import('node:sqlite');
+import { Database, type Database as DatabaseType } from 'node-sqlite3-wasm';
 
 export interface RunResult {
-  changes: number | bigint;
+  changes: number;
   lastInsertRowid: number | bigint;
 }
 
@@ -31,42 +22,38 @@ export interface Db {
 const PRAGMA_NAME = /^[a-z_]+$/i;
 
 /**
- * 把 node:sqlite 的 DatabaseSync 包成仓储层用的统一接口。
- * 换底层（例如退回 better-sqlite3）时只改这一个文件，T6–T8 无感。
+ * 把 node-sqlite3-wasm 的 Database 包成仓储层用的统一接口。
+ *
+ * 为什么不用 node:sqlite：本机 Electron ≥35 启动即崩（0x80000003），
+ * 只能用 Electron 33（Node 20，没有 node:sqlite）。WASM 版 SQLite
+ * 不需要原生编译、不挑 Electron 版本，代价是性能略低（本项目规模无感）。
  */
-export function wrapDatabaseSync(raw: InstanceType<typeof sqlite.DatabaseSync>): Db {
-  const cache = new Map<string, StatementSync>();
-
-  const statement = (sql: string): StatementSync => {
-    let stmt = cache.get(sql);
-    if (!stmt) {
-      stmt = raw.prepare(sql);
-      cache.set(sql, stmt);
-    }
-    return stmt;
-  };
+export function wrapDatabase(raw: DatabaseType): Db {
+  const toParams = (params: unknown[]): never[] =>
+    (params.length ? params : []) as never[];
 
   return {
     prepare(sql) {
-      const stmt = statement(sql);
       return {
-        run: (...params) => stmt.run(...(params as never[])) as RunResult,
-        get: (...params) => stmt.get(...(params as never[])),
-        all: (...params) => stmt.all(...(params as never[])) as unknown[],
+        run: (...params) => raw.run(sql, toParams(params)) as unknown as RunResult,
+        get: (...params) => {
+          const row = raw.get(sql, toParams(params));
+          // node-sqlite3-wasm 在无结果时返回 null，统一成 undefined。
+          return row === null ? undefined : row;
+        },
+        all: (...params) => raw.all(sql, toParams(params)) as unknown[],
       };
     },
 
     exec(sql) {
       raw.exec(sql);
-      cache.clear();
     },
 
     pragma(name, opts) {
       if (!PRAGMA_NAME.test(name)) throw new Error(`非法 PRAGMA 名称: ${name}`);
-      const row = raw.prepare(`PRAGMA ${name}`).get() as Record<string, unknown> | undefined;
+      const row = raw.get(`PRAGMA ${name}`) as Record<string, unknown> | undefined;
       if (!row) return undefined;
-      if (opts?.simple) return Object.values(row)[0];
-      return row;
+      return opts?.simple ? Object.values(row)[0] : row;
     },
 
     transaction<T>(fn: () => T): T {
@@ -82,8 +69,9 @@ export function wrapDatabaseSync(raw: InstanceType<typeof sqlite.DatabaseSync>):
     },
 
     close() {
-      cache.clear();
       raw.close();
     },
   };
 }
+
+export { Database };

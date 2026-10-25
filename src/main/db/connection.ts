@@ -1,6 +1,6 @@
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { sqlite, wrapDatabaseSync, type Db } from './driver';
+import { Database, wrapDatabase, type Db } from './driver';
 
 export type { Db, Statement, RunResult } from './driver';
 
@@ -14,12 +14,16 @@ export function openDatabase(filePath: string): Db {
     mkdirSync(dirname(filePath), { recursive: true });
   }
 
-  const raw = new sqlite.DatabaseSync(filePath);
+  const raw = new Database(filePath);
 
   if (filePath !== ':memory:') {
-    raw.exec('PRAGMA journal_mode = WAL');
+    try {
+      raw.exec('PRAGMA journal_mode = WAL');
+    } catch {
+      // WASM 虚拟文件系统可能不支持 WAL，退回默认日志模式即可。
+    }
   }
   raw.exec('PRAGMA foreign_keys = ON');
 
-  return wrapDatabaseSync(raw);
+  return wrapDatabase(raw);
 }

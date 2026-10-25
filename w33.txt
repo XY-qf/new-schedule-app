@@ -1,0 +1,2 @@
+
+WINDOW_OK bounds={"x":660,"y":415,"width":386,"height":237}
