@@ -81,6 +81,12 @@ test('最大化后切到待办，窗口仍是窄形态（FR-5.2.6）', async () 
   );
   expect(stillMaximized).toBe(false);
 
+  // 切回日历：它自己之前被最大化过，应当恢复最大化（FR-5.2.6）
+  await page.getByRole('tab', { name: '日历' }).click();
+  await expect
+    .poll(async () => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.isMaximized()))
+    .toBe(true);
+
   await app.close();
 });
 

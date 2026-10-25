@@ -67,10 +67,17 @@ export function registerIpcHandlers(db: Db): void {
     const display = screen.getDisplayMatching(win.getBounds());
     const target = boundsForView(payload.view, { workArea: display.workArea }, win.getContentBounds());
     win.setMinimumSize(380, 480);
-    animateBounds(win, target);
+
+    // FR-5.2.6：目标视图自己也被最大化过时，切回来要恢复最大化。
+    const restoreMax = isMaximizedFor(payload.view);
+    if (restoreMax) {
+      animateBounds(win, target, () => win.maximize());
+    } else {
+      animateBounds(win, target);
+    }
 
     currentView = payload.view;
-    return { bounds: target, maximized: false };
+    return { bounds: target, maximized: restoreMax };
   });
 
   ipcMain.handle(CHANNELS.windowMinimize, (event) => {
@@ -113,7 +120,7 @@ function isMaximizedFor(view: ViewName): boolean {
 export { isMaximizedFor };
 
 /** 约 180ms 的窗口尺寸补间，避免切换视图时硬跳变（FR-5.2.1）。 */
-function animateBounds(win: BrowserWindow, target: Rect): void {
+function animateBounds(win: BrowserWindow, target: Rect, onDone?: () => void): void {
   const from = win.getContentBounds();
   const steps = 12;
 
@@ -123,6 +130,7 @@ function animateBounds(win: BrowserWindow, target: Rect): void {
     from.width === target.width &&
     from.height === target.height
   ) {
+    onDone?.();
     return;
   }
 
@@ -134,7 +142,10 @@ function animateBounds(win: BrowserWindow, target: Rect): void {
 
     if (step >= steps || win.isDestroyed()) {
       clearInterval(timer);
-      if (!win.isDestroyed()) win.setContentBounds(target);
+      if (!win.isDestroyed()) {
+        win.setContentBounds(target);
+        onDone?.();
+      }
       return;
     }
 
