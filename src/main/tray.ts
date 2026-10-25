@@ -10,6 +10,7 @@ import {
 import { APP_NAME } from '../shared/app-info';
 import type { Db } from './db/driver';
 import { summarizeMissed, startScheduler } from './notify/scheduler';
+import { showMini } from './miniWindow';
 
 /**
  * 16×16 的托盘图标（暖白底 + 强调色圆角方块），内联成 base64，
@@ -69,8 +70,13 @@ export function destroyTray(): void {
 
 /** 启动提醒轮询：到点弹系统通知；启动时把错过的合并成一条。 */
 export function startNotifications(db: Db): void {
+  // 端到端测试需要快速轮询，生产环境固定 60 秒
+  const intervalMs = Number(process.env['AI_TODO_TEST_TICK_MS'] ?? 60_000);
+
   stopScheduler = startScheduler(db, {
     onDue: (item) => {
+      // 系统通知 + 应用内迷你弹窗（FR-9.2）：主窗口缩到托盘时也要能看到
+      showMini({ title: item.title, time: item.fireAt.slice(11, 16) });
       if (!Notification.isSupported()) return;
       new Notification({
         title: APP_NAME,
@@ -84,7 +90,7 @@ export function startNotifications(db: Db): void {
         body: summarizeMissed(items),
       }).show();
     },
-  });
+  }, { intervalMs });
 }
 
 export function stopNotifications(): void {

@@ -18,6 +18,7 @@ import {
 import { listOccurrenceViews } from '../service/calendar';
 import { upsertException } from '../repo/exceptions';
 import { listPeriods } from '../repo/periods';
+import { closeMini } from '../miniWindow';
 import { createTask, deleteTask, setTaskDone, updateTask } from '../repo/tasks';
 import { listTodoItems } from '../service/todo';
 import { createCountdown, deleteCountdown, listCountdowns, updateCountdown } from '../repo/countdowns';
@@ -171,6 +172,20 @@ export function registerIpcHandlers(db: Db): void {
       return upsertReminder(db, payload);
     },
   );
+
+  ipcMain.handle(CHANNELS.miniClose, () => {
+    closeMini();
+  });
+  ipcMain.handle(CHANNELS.miniOpen, (event) => {
+    closeMini();
+    const win = BrowserWindow.getAllWindows().find((w) => w.webContents.id !== event.sender.id);
+    const main = win ?? BrowserWindow.getAllWindows()[0];
+    if (main) {
+      if (main.isMinimized()) main.restore();
+      main.show();
+      main.focus();
+    }
+  });
 
   ipcMain.handle(CHANNELS.settingsGet, (_e, payload: { key: string }) => getSetting(db, payload.key));
   ipcMain.handle(CHANNELS.settingsSet, (_e, payload: { key: string; value: string }) => {

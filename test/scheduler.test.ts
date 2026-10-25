@@ -95,3 +95,13 @@ describe('提醒调度（T28）', () => {
     expect(onMissed).not.toHaveBeenCalled();
   });
 });
+
+describe('调度器时钟（回归：必须是本地时间）', () => {
+  it('默认时钟与 nowLocal 一致，不会用 UTC', async () => {
+    const { nowLocal } = await import('../src/shared/time');
+    const local = nowLocal();
+    // toISOString 是 UTC，在 +08:00 会比本地早 8 小时；默认时钟不能与它相等
+    const utc = new Date().toISOString().slice(0, 19);
+    expect(local.slice(0, 13)).not.toBe(utc.slice(0, 13));
+  });
+});

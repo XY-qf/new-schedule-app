@@ -25,6 +25,8 @@ export const CHANNELS = {
   countdownsDelete: 'countdowns:delete',
   remindersGet: 'reminders:get',
   remindersSet: 'reminders:set',
+  miniOpen: 'mini:open',
+  miniClose: 'mini:close',
   settingsGet: 'settings:get',
   settingsSet: 'settings:set',
   windowSetView: 'window:setView',

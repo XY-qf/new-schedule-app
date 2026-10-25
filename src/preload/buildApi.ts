@@ -65,6 +65,10 @@ export interface Api {
       atTime?: string | null;
     }) => Promise<Reminder | null>;
   };
+  mini: {
+    open: () => Promise<void>;
+    close: () => Promise<void>;
+  };
   settings: {
     get: (input: { key: string }) => Promise<string | null>;
     set: (input: { key: string; value: string }) => Promise<void>;
@@ -119,6 +123,10 @@ export function buildApi(ipc: Pick<IpcRenderer, 'invoke'>): Api {
     reminders: {
       get: (input) => ipc.invoke(CHANNELS.remindersGet, input),
       set: (input) => ipc.invoke(CHANNELS.remindersSet, input),
+    },
+    mini: {
+      open: () => ipc.invoke(CHANNELS.miniOpen),
+      close: () => ipc.invoke(CHANNELS.miniClose),
     },
     settings: {
       get: (input) => ipc.invoke(CHANNELS.settingsGet, input),

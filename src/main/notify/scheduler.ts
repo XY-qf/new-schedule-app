@@ -1,5 +1,6 @@
 import type { Db } from '../db/driver';
 import { dueReminders, markFired, type DueReminder } from '../repo/reminders';
+import { nowLocal } from '../../shared/time';
 
 /** 启动时最多补偿多久以内的错过提醒（FR-9.4）。 */
 export const CATCH_UP_HOURS = 12;
@@ -61,7 +62,8 @@ export function startScheduler(
   handlers: SchedulerHandlers,
   options: { now?: () => string; intervalMs?: number } = {},
 ): () => void {
-  const now = options.now ?? (() => new Date().toISOString().slice(0, 19).replace('T', 'T'));
+  // 必须用本地时间：提醒时刻存的是本地串，用 UTC 会整体错位若干小时
+  const now = options.now ?? nowLocal;
   const intervalMs = options.intervalMs ?? 60_000;
 
   catchUp(db, now(), handlers);
