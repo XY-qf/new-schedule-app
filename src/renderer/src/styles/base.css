@@ -35,6 +35,12 @@ body {
   color: var(--color-text-muted);
 }
 
+.app__body--calendar {
+  align-items: stretch;
+  justify-content: flex-start;
+  flex-direction: column;
+}
+
 /* ---- 标题栏 ---- */
 .titlebar {
   height: var(--titlebar-h);

@@ -27,3 +27,18 @@ export function timePart(value: string): string {
 export function withSeconds(time: string): string {
   return time.length === 5 ? `${time}:00` : time;
 }
+/** 1 = 周一 … 7 = 周日 */
+export function isoWeekday(date: string): number {
+  const [y, m, d] = date.split('-').map(Number) as [number, number, number];
+  const js = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  return js === 0 ? 7 : js;
+}
+
+/** 取该日期所在周的周一。 */
+export function startOfWeek(date: string): string {
+  return addDays(date, -(isoWeekday(date) - 1));
+}
+
+export function todayLocal(): string {
+  return datePart(nowLocal());
+}

@@ -1,11 +1,9 @@
-export {};
+import type { Api } from '../../preload/buildApi';
 
 declare global {
   interface Window {
-    api?: {
-      window: {
-        setView: (payload: { view: 'calendar' | 'todo' }) => Promise<unknown>;
-      };
-    };
+    api?: Api;
   }
 }
+
+export {};
