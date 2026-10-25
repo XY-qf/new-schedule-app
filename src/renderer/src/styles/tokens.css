@@ -1,0 +1,24 @@
+:root {
+  /* 色彩 · 暖白纸感（PRD 8.2 v1.6） */
+  --color-stage: #ded7cc;
+  --color-panel: #faf7f1;
+  --color-panel-2: #f2ece2;
+  --color-line: #e7dfd3;
+  --color-grid: #f0ebe3;
+  --color-text: #302b26;
+  --color-text-muted: #7d766c;
+  --color-text-faint: #aea79c;
+  --color-accent: #3e6c96;
+  --color-now: #c0473e;
+  --color-hover: #f1eae0;
+
+  /* 尺寸 */
+  --win-cal-w: 1000px;
+  --win-cal-h: 700px;
+  --win-todo-w: 400px;
+  --win-todo-h: 822px;
+  --hour-h: 48px;
+  --axis-w: 56px;
+  --titlebar-h: 40px;
+  --tabbar-h: 40px;
+}

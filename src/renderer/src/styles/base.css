@@ -1,0 +1,163 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--color-stage);
+  color: var(--color-text);
+  font-family: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", "Segoe UI", system-ui, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-panel);
+  overflow: hidden;
+}
+
+.app__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+}
+
+/* ---- 标题栏 ---- */
+.titlebar {
+  height: var(--titlebar-h);
+  flex: 0 0 var(--titlebar-h);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 16px;
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+.titlebar__app {
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: var(--color-text-muted);
+}
+
+.winbtns {
+  margin-left: auto;
+  display: flex;
+  align-self: stretch;
+  -webkit-app-region: no-drag;
+}
+
+.winbtn {
+  width: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  position: relative;
+}
+
+.winbtn:hover {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+
+.winbtn--close:hover {
+  background: var(--color-now);
+  color: #fff;
+}
+
+.ico-min,
+.ico-max,
+.ico-close {
+  position: relative;
+  width: 10px;
+  height: 10px;
+  display: block;
+}
+
+.ico-min::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 5px;
+  width: 10px;
+  height: 1.2px;
+  background: currentColor;
+}
+
+.ico-max::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1.2px solid currentColor;
+  border-radius: 1.5px;
+}
+
+.ico-close::before,
+.ico-close::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 4.4px;
+  width: 10px;
+  height: 1.2px;
+  background: currentColor;
+}
+
+.ico-close::before {
+  transform: rotate(45deg);
+}
+
+.ico-close::after {
+  transform: rotate(-45deg);
+}
+
+/* ---- 标签栏 ---- */
+.tabbar {
+  height: var(--tabbar-h);
+  flex: 0 0 var(--tabbar-h);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 12px;
+  -webkit-app-region: no-drag;
+}
+
+.tab {
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.tab:hover {
+  background: var(--color-hover);
+  color: var(--color-text);
+}
+
+.tab--active {
+  background: var(--color-hover);
+  color: var(--color-text);
+  font-weight: 600;
+}
