@@ -5,6 +5,7 @@ import './styles/tokens.css';
 import './styles/base.css';
 import './styles/calendar.css';
 import './styles/form.css';
+import './styles/todo.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('root element missing');

@@ -11,12 +11,15 @@ import {
   createSchedule,
   deleteSchedule,
   getSchedule,
+  setScheduleDone,
   updateSchedule,
   type ScheduleInput,
 } from '../repo/schedules';
 import { listOccurrenceViews } from '../service/calendar';
 import { upsertException } from '../repo/exceptions';
 import { listPeriods } from '../repo/periods';
+import { createTask, deleteTask, setTaskDone } from '../repo/tasks';
+import { listTodoItems } from '../service/todo';
 import { boundsForView, type Rect, type ViewName } from '../window/bounds';
 
 export function registerIpcHandlers(db: Db): void {
@@ -90,6 +93,34 @@ export function registerIpcHandlers(db: Db): void {
   );
 
   ipcMain.handle(CHANNELS.periodsList, () => listPeriods(db));
+
+  ipcMain.handle(
+    CHANNELS.todoList,
+    (
+      _e,
+      payload: { today: string; categoryId?: string | null; includeDone?: boolean },
+    ) => listTodoItems(db, payload),
+  );
+  ipcMain.handle(
+    CHANNELS.tasksCreate,
+    (_e, input: { title: string; categoryId?: string | null; note?: string | null }) =>
+      createTask(db, input),
+  );
+  ipcMain.handle(
+    CHANNELS.tasksSetDone,
+    (_e, payload: { id: string; isDone: boolean }) => setTaskDone(db, payload.id, payload.isDone),
+  );
+  ipcMain.handle(CHANNELS.tasksDelete, (_e, payload: { id: string }) => {
+    deleteTask(db, payload.id);
+  });
+
+  ipcMain.handle(
+    CHANNELS.schedulesSetDone,
+    (
+      _e,
+      payload: { id: string; occurrenceStart?: string; isDone: boolean },
+    ) => setScheduleDone(db, payload.id, payload.isDone, payload.occurrenceStart),
+  );
 
   ipcMain.handle(CHANNELS.windowSetView, (event, payload: { view: ViewName }) => {
     const win = BrowserWindow.fromWebContents(event.sender);

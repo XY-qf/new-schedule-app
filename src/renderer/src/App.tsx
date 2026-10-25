@@ -6,6 +6,8 @@ import { DayView } from './calendar/DayView';
 import { MonthView } from './calendar/MonthView';
 import type { ViewMode } from './calendar/ViewSwitch';
 import { ScheduleForm } from './calendar/ScheduleForm';
+import { TodoView } from './todo/TodoView';
+import { TaskForm } from './todo/TaskForm';
 import {
   addDays,
   addMonths,
@@ -16,6 +18,7 @@ import {
 } from '../../shared/time';
 import type { Category, OccurrenceView, Schedule } from '../../shared/types';
 import type { Period } from '../../shared/periods';
+import type { TodoItem } from '../../shared/todo';
 
 export function App(): JSX.Element {
   const [view, setView] = useState<ViewName>('calendar');
@@ -31,6 +34,9 @@ export function App(): JSX.Element {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [maximized, setMaximized] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [todoItems, setTodoItems] = useState<TodoItem[]>([]);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [taskFormOpen, setTaskFormOpen] = useState(false);
 
   const weekStart = useMemo(() => startOfWeek(anchor), [anchor]);
 
@@ -65,6 +71,27 @@ export function App(): JSX.Element {
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  const loadTodo = useCallback(async (): Promise<void> => {
+    const api = window.api;
+    if (!api) return;
+    try {
+      const items = await api.todo.list({
+        today: todayLocal(),
+        categoryId: activeCategory,
+        includeDone: true,
+      });
+      setTodoItems(items);
+      setLoadError(null);
+    } catch (cause) {
+      setLoadError(cause instanceof Error ? cause.message : String(cause));
+    }
+  }, [activeCategory]);
+
+  useEffect(() => {
+    if (view !== 'todo') return;
+    void loadTodo();
+  }, [view, loadTodo]);
 
   // 跨午夜后「今天」要更新，否则高亮、红线、默认周都停在昨天。
   useEffect(() => {
@@ -231,12 +258,47 @@ export function App(): JSX.Element {
             />
           )
         ) : (
-          <span>待办</span>
+          <TodoView
+            items={todoItems}
+            categories={categories}
+            activeCategory={activeCategory}
+            error={loadError}
+            onFilter={setActiveCategory}
+            onToggle={(item) => {
+              void (async () => {
+                const api = window.api;
+                if (!api) return;
+                try {
+                  if (item.kind === 'task') {
+                    await api.tasks.setDone({ id: item.id, isDone: !item.isDone });
+                  } else {
+                    await api.schedules.setDone({
+                      id: item.id,
+                      occurrenceStart: item.occurrenceStart,
+                      isDone: !item.isDone,
+                    });
+                  }
+                  await loadTodo();
+                } catch (cause) {
+                  setLoadError(cause instanceof Error ? cause.message : String(cause));
+                }
+              })();
+            }}
+            onOpen={(item) => {
+              if (item.kind === 'schedule') {
+                void openEdit(item.id, item.occurrenceStart ?? '');
+              }
+            }}
+            onCreateTask={() => setTaskFormOpen(true)}
+            onBackToCalendar={() => changeView('calendar')}
+          />
         )}
 
-        <button type="button" className="fab" aria-label="新建日程" onClick={openCreate}>
-          ＋
-        </button>
+        {view === 'calendar' ? (
+          <button type="button" className="fab" aria-label="新建日程" onClick={openCreate}>
+            ＋
+          </button>
+        ) : null}
 
         {toast ? (
           <div className="toast" role="status">
@@ -259,6 +321,17 @@ export function App(): JSX.Element {
               setFormOpen(false);
               setEditing(null);
             }}
+          />
+        ) : null}
+        {taskFormOpen ? (
+          <TaskForm
+            categories={categories}
+            onSaved={() => {
+              setTaskFormOpen(false);
+              void loadTodo();
+              flash('已添加任务');
+            }}
+            onCancel={() => setTaskFormOpen(false)}
           />
         ) : null}
       </main>

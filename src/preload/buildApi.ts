@@ -2,6 +2,8 @@ import type { IpcRenderer } from 'electron';
 import { CHANNELS } from '../shared/ipc-contract';
 import type { Category, OccurrenceView, Schedule } from '../shared/types';
 import type { Period } from '../shared/periods';
+import type { TodoItem } from '../shared/todo';
+import type { Task } from '../main/repo/tasks';
 import type { ScheduleInput } from '../main/repo/schedules';
 import type { RecurrenceDraft } from '../shared/recurrence';
 
@@ -41,9 +43,18 @@ export interface Api {
       scope?: 'one' | 'series';
       occurrenceStart?: string;
     }) => Promise<void>;
+    setDone: (input: { id: string; occurrenceStart?: string; isDone: boolean }) => Promise<Schedule>;
   };
   periods: {
     list: () => Promise<Period[]>;
+  };
+  todo: {
+    list: (input: { today: string; categoryId?: string | null; includeDone?: boolean }) => Promise<TodoItem[]>;
+  };
+  tasks: {
+    create: (input: { title: string; categoryId?: string | null; note?: string | null }) => Promise<Task>;
+    setDone: (input: { id: string; isDone: boolean }) => Promise<Task>;
+    remove: (input: { id: string }) => Promise<void>;
   };
   window: {
     setView: (payload: { view: ViewName }) => Promise<{ maximized: boolean } | null>;
@@ -69,9 +80,18 @@ export function buildApi(ipc: Pick<IpcRenderer, 'invoke'>): Api {
       create: (input) => ipc.invoke(CHANNELS.schedulesCreate, input),
       update: (input) => ipc.invoke(CHANNELS.schedulesUpdate, input),
       delete: (input) => ipc.invoke(CHANNELS.schedulesDelete, input),
+      setDone: (input) => ipc.invoke(CHANNELS.schedulesSetDone, input),
     },
     periods: {
       list: () => ipc.invoke(CHANNELS.periodsList),
+    },
+    todo: {
+      list: (input) => ipc.invoke(CHANNELS.todoList, input),
+    },
+    tasks: {
+      create: (input) => ipc.invoke(CHANNELS.tasksCreate, input),
+      setDone: (input) => ipc.invoke(CHANNELS.tasksSetDone, input),
+      remove: (input) => ipc.invoke(CHANNELS.tasksDelete, input),
     },
     window: {
       setView: (payload) => ipc.invoke(CHANNELS.windowSetView, payload),

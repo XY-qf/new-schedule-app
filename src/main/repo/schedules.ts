@@ -3,6 +3,7 @@ import type { Db } from '../db/driver';
 import type { Schedule, TimeType } from '../../shared/types';
 import type { RecurrenceDraft } from '../../shared/recurrence';
 import { addDays, nowLocal } from '../../shared/time';
+import { upsertException } from './exceptions';
 
 export interface ScheduleInput {
   title: string;
@@ -177,6 +178,31 @@ export function updateSchedule(
 
     return getSchedule(db, id);
   });
+}
+
+/**
+ * 标记完成。重复日程必须按「单次实例」记（FR-7.4）：
+ * 有 occurrenceStart 且有重复规则时写例外，绝不改整行的 is_done——那会把整个系列标完成。
+ */
+export function setScheduleDone(
+  db: Db,
+  id: string,
+  isDone: boolean,
+  occurrenceStart?: string,
+): Schedule {
+  const cur = getSchedule(db, id);
+
+  if (cur.recurrenceId && occurrenceStart) {
+    upsertException(db, {
+      scheduleId: id,
+      occurrenceStart,
+      isDone,
+      doneAt: isDone ? nowLocal() : null,
+    });
+    return getSchedule(db, id);
+  }
+
+  return updateSchedule(db, id, { isDone });
 }
 
 /**
