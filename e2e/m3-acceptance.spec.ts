@@ -16,6 +16,7 @@ function cleanEnv(): Record<string, string> {
     env[k] = v;
   }
   env.AI_TODO_USER_DATA = USER_DATA;
+  env.AI_TODO_TEST_QUIT_ON_CLOSE = '1';
   return env;
 }
 

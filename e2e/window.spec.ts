@@ -13,6 +13,8 @@ function cleanEnv(): Record<string, string> {
     if (key.toUpperCase() === 'ELECTRON_RUN_AS_NODE' || value === undefined) continue;
     env[key] = value;
   }
+  // 托盘常驻后「关闭 = 隐藏」；测试里必须能真退出，否则下一条用例会被单实例锁挡住。
+  env.AI_TODO_TEST_QUIT_ON_CLOSE = '1';
   return env;
 }
 

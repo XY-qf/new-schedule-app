@@ -5,6 +5,7 @@ import { openDatabase } from './db/connection';
 import { runMigrations } from './db/migrate';
 import { ensureSeedCategories } from './repo/categories';
 import { registerIpcHandlers } from './ipc/register';
+import { confirmQuit, createTray, startNotifications, stopNotifications } from './tray';
 import { boundsForView } from './window/bounds';
 import type { Db } from './db/driver';
 
@@ -37,8 +38,37 @@ if (!app.requestSingleInstanceLock()) {
     db = initDatabase();
     registerIpcHandlers(db);
     createWindow();
+    startNotifications(db);
+
+    createTray({
+      onOpen: () => {
+        if (!mainWindow) {
+          createWindow();
+          return;
+        }
+        if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.show();
+        mainWindow.focus();
+      },
+      onCreateSchedule: () => {
+        if (!mainWindow) createWindow();
+        mainWindow?.show();
+        mainWindow?.focus();
+      },
+      onQuit: () => {
+        void (async () => {
+          const ok = await confirmQuit(mainWindow);
+          if (!ok) return;
+          isQuitting = true;
+          app.quit();
+        })();
+      },
+    });
   });
 }
+
+/** 托盘「退出」走这条路径时，close 事件不再拦。 */
+let isQuitting = false;
 
 function initDatabase(): Db {
   const file = join(app.getPath('userData'), 'data', 'app.db');
@@ -76,6 +106,14 @@ function createWindow(): void {
     mainWindow = null;
   });
 
+  // 关闭 = 缩到托盘（FR-12.1）；真退出走托盘菜单的「退出」。
+  win.on('close', (event) => {
+    // 端到端测试里 app.close() 必须真的退出，否则 Playwright 会等超时。
+    if (isQuitting || process.env['AI_TODO_TEST_QUIT_ON_CLOSE'] === '1') return;
+    event.preventDefault();
+    win.hide();
+  });
+
   const devUrl = process.env['ELECTRON_RENDERER_URL'];
   if (devUrl) {
     void win.loadURL(devUrl);
@@ -87,11 +125,12 @@ function createWindow(): void {
 }
 
 app.on('window-all-closed', () => {
-  app.quit();
+  // 托盘常驻：关掉窗口不等于退出进程，这里什么都不做。
 });
 
 // 数据库只在真正退出时关闭：关窗口 ≠ 退出进程，提前关会让仍注册着的 IPC handler 用到已关闭实例。
 app.on('will-quit', () => {
+  stopNotifications();
   db?.close();
   db = null;
 });
