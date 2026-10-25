@@ -13,4 +13,3 @@ Thumbs.db
 *.logtest-results/
 playwright-report/
 week-shot.png
-shot.spec.ts

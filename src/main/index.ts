@@ -11,6 +11,13 @@ import type { Db } from './db/driver';
 let mainWindow: BrowserWindow | null = null;
 let db: Db | null = null;
 
+// 允许外部指定数据目录：端到端测试要跑在干净、可丢弃的目录里，
+// 不能碰用户真实的 app.db。
+const userDataOverride = process.env['AI_TODO_USER_DATA'];
+if (userDataOverride) {
+  app.setPath('userData', userDataOverride);
+}
+
 function initDatabase(): Db {
   const file = join(app.getPath('userData'), 'data', 'app.db');
   const database = openDatabase(file);
