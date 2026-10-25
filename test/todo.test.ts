@@ -161,3 +161,21 @@ describe('待办文案纯函数', () => {
     expect(sortTodoItems([task, late]).map((i) => i.id)).toEqual(['s2', 't1']);
   });
 });
+
+describe('待办列表 · 「全部」与「无分类」的区别（回归）', () => {
+  it('不传 categoryId 时返回全部分类', () => {
+    sched('课程', '2026-10-26T09:00:00', '2026-10-26T10:00:00');
+    sched('生活', '2026-10-26T11:00:00', '2026-10-26T12:00:00', { categoryId: 'cat-life' });
+    createTask(db, { title: '无分类', note: null, categoryId: null });
+
+    expect(listTodoItems(db, { today: '2026-10-26' })).toHaveLength(3);
+  });
+
+  it('categoryId 传 null 表示「只看无分类」，不是「全部」', () => {
+    sched('课程', '2026-10-26T09:00:00', '2026-10-26T10:00:00');
+    createTask(db, { title: '无分类', note: null, categoryId: null });
+
+    const onlyUncategorized = listTodoItems(db, { today: '2026-10-26', categoryId: null });
+    expect(onlyUncategorized.map((i) => i.title)).toEqual(['无分类']);
+  });
+});

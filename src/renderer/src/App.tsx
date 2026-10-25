@@ -78,7 +78,8 @@ export function App(): JSX.Element {
     try {
       const items = await api.todo.list({
         today: todayLocal(),
-        categoryId: activeCategory,
+        // null 表示「全部」，必须转成 undefined：服务层里 null 是「只看无分类」的意思。
+        categoryId: activeCategory ?? undefined,
         includeDone: true,
       });
       setTodoItems(items);
