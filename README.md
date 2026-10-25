@@ -5,7 +5,18 @@
 ## 环境要求
 
 - **Node.js ≥ 22**（仓库里 `.nvmrc` 钉的是 22）
-- **pnpm ≥ 11**（`npm i -g pnpm`）
+- **pnpm ≥ 11**
+
+Windows 上从零开始装：
+
+```powershell
+winget install --id OpenJS.NodeJS.LTS -e
+# 关掉终端重新打开，然后：
+corepack enable
+corepack prepare pnpm@latest --activate
+node -v
+pnpm -v
+```
 
 ## 快速开始
 
@@ -23,6 +34,12 @@ pnpm install
 ```
 
 > **pnpm 11 注意**：构建脚本白名单在 `pnpm-workspace.yaml` 的 `onlyBuiltDependencies` 里，不要在 `package.json` 里写 `pnpm` 字段（pnpm 11 已不读取）。非交互环境（CI）需要 `CI=true`。
+
+> **`ELECTRON_RUN_AS_NODE` 陷阱**：如果环境里设了 `ELECTRON_RUN_AS_NODE=1`（某些 IDE、容器或代理工具会设），Electron 会以纯 Node 模式启动，表现为 `Cannot read properties of undefined (reading 'whenReady')`。启动前先清掉：
+>
+> ```powershell
+> Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
+> ```
 
 ## 常用命令
 
