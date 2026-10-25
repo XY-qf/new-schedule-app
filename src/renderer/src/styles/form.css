@@ -144,3 +144,27 @@
   border-color: var(--color-now);
   background: color-mix(in srgb, var(--color-now) 6%, var(--color-panel-2));
 }
+.form__select {
+  font: inherit;
+  font-size: 13px;
+  color: var(--color-text);
+  background: var(--color-panel-2);
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+  padding: 5px 8px;
+}
+
+.form__label--inline {
+  margin-top: 0;
+  align-self: center;
+}
+
+.form__row--periods {
+  align-items: center;
+  margin-top: 6px;
+}
+
+.btn--small {
+  padding: 4px 10px;
+  font-size: 12px;
+}

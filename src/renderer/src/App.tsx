@@ -15,6 +15,7 @@ import {
   todayLocal,
 } from '../../shared/time';
 import type { Category, OccurrenceView, Schedule } from '../../shared/types';
+import type { Period } from '../../shared/periods';
 
 export function App(): JSX.Element {
   const [view, setView] = useState<ViewName>('calendar');
@@ -22,6 +23,7 @@ export function App(): JSX.Element {
   const [anchor, setAnchor] = useState(() => todayLocal());
   const [today, setToday] = useState(() => todayLocal());
   const [categories, setCategories] = useState<Category[]>([]);
+  const [periods, setPeriods] = useState<Period[]>([]);
   const [occurrences, setOccurrences] = useState<OccurrenceView[]>([]);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Schedule | null>(null);
@@ -46,11 +48,13 @@ export function App(): JSX.Element {
     const api = window.api;
     if (!api) return;
     try {
-      const [cats, views] = await Promise.all([
+      const [cats, views, periodsList] = await Promise.all([
         api.categories.list(),
         api.schedules.listRange({ start: range[0], end: range[1] }),
+        api.periods.list(),
       ]);
       setCategories(cats);
+      setPeriods(periodsList);
       setOccurrences(views);
       setLoadError(null);
     } catch (cause) {
@@ -243,6 +247,7 @@ export function App(): JSX.Element {
         {formOpen ? (
           <ScheduleForm
             categories={categories}
+            periods={periods}
             initial={editing ?? undefined}
             occurrenceStart={editingKey ?? undefined}
             onSaved={handleSaved}

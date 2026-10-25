@@ -1,10 +1,12 @@
 import { useState, type JSX } from 'react';
 import type { Category, Schedule, TimeType } from '../../../shared/types';
+import { periodToTimeRange, type Period } from '../../../shared/periods';
 import type { RecurrenceDraft } from '../../../shared/recurrence';
 import { RecurrenceEditor } from './RecurrenceEditor';
 
 export interface ScheduleFormProps {
   categories: Category[];
+  periods?: Period[];
   initial?: Schedule;
   /** 被点开的那一次的原始开始时间，用于「只改这一次」 */
   occurrenceStart?: string;
@@ -41,6 +43,7 @@ function initialMode(initial?: Schedule): Mode {
 
 export function ScheduleForm({
   categories,
+  periods = [],
   initial,
   occurrenceStart,
   onSaved,
@@ -59,6 +62,8 @@ export function ScheduleForm({
   const [recurrence, setRecurrence] = useState<RecurrenceDraft | null>(null);
   const isRecurring = Boolean(initial?.recurrenceId);
   const [scope, setScope] = useState<'one' | 'series'>('one');
+  const [periodFrom, setPeriodFrom] = useState<number>(1);
+  const [periodTo, setPeriodTo] = useState<number>(1);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -91,6 +96,28 @@ export function ScheduleForm({
   const hint = touched ? validationError() : null;
   const timeInvalid = hint !== null && hint.includes('早于');
 
+  const [appliedPeriod, setAppliedPeriod] = useState<{ from: number; to: number } | null>(null);
+
+  /** 按节次把起止时刻填进表单；日期沿用已选的日期。 */
+  const applyPeriod = (): void => {
+    const range = periodToTimeRange(periods, periodFrom, periodTo);
+    if (!range) {
+      setError('选中的节次不在作息表里');
+      return;
+    }
+    const date = startAt ? startAt.slice(0, 10) : endAt ? endAt.slice(0, 10) : '';
+    if (!date) {
+      setError('请先选择日期，再按节次填入');
+      return;
+    }
+    setStartAt(`${date}T${range.startTime}`);
+    setEndAt(`${date}T${range.endTime}`);
+    setAppliedPeriod({ from: periodFrom, to: periodTo });
+    setError(null);
+  };
+
+  const clearPeriod = (): void => setAppliedPeriod(null);
+
   const submit = async (): Promise<void> => {
     const invalid = validationError();
     if (invalid) {
@@ -118,6 +145,9 @@ export function ScheduleForm({
             isAllDay: false,
             startAt: needsStart ? withSeconds(startAt) : null,
             endAt: needsEnd ? withSeconds(endAt) : null,
+            // 只有真的「按节次」填过才记节次，手填的时间不挂节次（FR-3.5 只重算按节次建的）。
+            periodStart: appliedPeriod?.from ?? null,
+            periodEnd: appliedPeriod?.to ?? null,
           };
 
     try {
@@ -257,6 +287,51 @@ export function ScheduleForm({
             ) : null}
           </div>
         )}
+
+        {mode === 'range' && periods.length > 0 ? (
+          <div className="form__row form__row--periods" data-testid="period-fill">
+            <span className="form__label form__label--inline">按节次</span>
+            <select
+              className="form__select"
+              aria-label="开始节次"
+              value={periodFrom}
+              onChange={(e) => {
+                setPeriodFrom(Number(e.target.value));
+                clearPeriod();
+              }}
+            >
+              {periods.map((p) => (
+                <option key={p.no} value={p.no}>
+                  第 {p.no} 节
+                </option>
+              ))}
+            </select>
+            <span className="recur__summary">–</span>
+            <select
+              className="form__select"
+              aria-label="结束节次"
+              value={periodTo}
+              onChange={(e) => {
+                setPeriodTo(Number(e.target.value));
+                clearPeriod();
+              }}
+            >
+              {periods.map((p) => (
+                <option key={p.no} value={p.no}>
+                  第 {p.no} 节
+                </option>
+              ))}
+            </select>
+            <button type="button" className="btn btn--small" onClick={applyPeriod}>
+              填入
+            </button>
+            {appliedPeriod ? (
+              <span className="recur__summary" data-testid="period-applied">
+                已按第 {appliedPeriod.from}–{appliedPeriod.to} 节
+              </span>
+            ) : null}
+          </div>
+        ) : null}
 
         {initial ? null : (
           <>

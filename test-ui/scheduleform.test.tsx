@@ -223,3 +223,73 @@ describe('ScheduleForm · 重复日程的改动范围（T18）', () => {
     expect(screen.queryByTestId('scope-switch')).toBeNull();
   });
 });
+
+describe('ScheduleForm · 按节次填时间（T19）', () => {
+  const periods = [
+    { no: 1, label: '第 1 节', startTime: '08:00', endTime: '08:45' },
+    { no: 2, label: '第 2 节', startTime: '08:50', endTime: '09:35' },
+    { no: 3, label: '第 3 节', startTime: '10:00', endTime: '10:45' },
+  ];
+
+  it('选第 1–2 节填入后，时间变成 08:00–09:35', () => {
+    render(
+      <ScheduleForm categories={cats} periods={periods} onSaved={() => {}} onCancel={() => {}} />,
+    );
+
+    fireEvent.change(screen.getByLabelText('开始时间'), { target: { value: '2026-10-26T09:00' } });
+    fireEvent.change(screen.getByLabelText('结束时间'), { target: { value: '2026-10-26T10:00' } });
+    fireEvent.change(screen.getByLabelText('结束节次'), { target: { value: '2' } });
+    fireEvent.click(screen.getByRole('button', { name: '填入' }));
+
+    expect((screen.getByLabelText('开始时间') as HTMLInputElement).value).toBe('2026-10-26T08:00');
+    expect((screen.getByLabelText('结束时间') as HTMLInputElement).value).toBe('2026-10-26T09:35');
+    expect(screen.getByTestId('period-applied').textContent).toContain('第 1–2 节');
+  });
+
+  it('按节次填过以后，保存会带上 periodStart / periodEnd', async () => {
+    render(
+      <ScheduleForm categories={cats} periods={periods} onSaved={() => {}} onCancel={() => {}} />,
+    );
+
+    fireEvent.change(screen.getByLabelText('标题'), { target: { value: '高数' } });
+    fireEvent.change(screen.getByLabelText('开始时间'), { target: { value: '2026-10-26T09:00' } });
+    fireEvent.change(screen.getByLabelText('结束时间'), { target: { value: '2026-10-26T10:00' } });
+    fireEvent.change(screen.getByLabelText('结束节次'), { target: { value: '2' } });
+    fireEvent.click(screen.getByRole('button', { name: '填入' }));
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
+
+    await vi.waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0]![0]).toEqual(
+      expect.objectContaining({
+        startAt: '2026-10-26T08:00:00',
+        endAt: '2026-10-26T09:35:00',
+        periodStart: 1,
+        periodEnd: 2,
+      }),
+    );
+  });
+
+  it('手填时间不挂节次', async () => {
+    render(
+      <ScheduleForm categories={cats} periods={periods} onSaved={() => {}} onCancel={() => {}} />,
+    );
+
+    fireEvent.change(screen.getByLabelText('标题'), { target: { value: '手填' } });
+    fireEvent.change(screen.getByLabelText('开始时间'), { target: { value: '2026-10-26T09:00' } });
+    fireEvent.change(screen.getByLabelText('结束时间'), { target: { value: '2026-10-26T10:00' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
+
+    await vi.waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0]![0]).toEqual(
+      expect.objectContaining({ periodStart: null, periodEnd: null }),
+    );
+  });
+
+  it('没选日期就按节次填入时给出提示', () => {
+    render(
+      <ScheduleForm categories={cats} periods={periods} onSaved={() => {}} onCancel={() => {}} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: '填入' }));
+    expect(screen.getByText('请先选择日期，再按节次填入')).toBeTruthy();
+  });
+});

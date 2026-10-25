@@ -12,6 +12,7 @@ export const CHANNELS = {
   schedulesCreate: 'schedules:create',
   schedulesUpdate: 'schedules:update',
   schedulesDelete: 'schedules:delete',
+  periodsList: 'periods:list',
   windowSetView: 'window:setView',
   windowMinimize: 'window:minimize',
   windowMaximizeToggle: 'window:maximizeToggle',

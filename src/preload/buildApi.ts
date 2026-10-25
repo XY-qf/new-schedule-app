@@ -1,6 +1,7 @@
 import type { IpcRenderer } from 'electron';
 import { CHANNELS } from '../shared/ipc-contract';
 import type { Category, OccurrenceView, Schedule } from '../shared/types';
+import type { Period } from '../shared/periods';
 import type { ScheduleInput } from '../main/repo/schedules';
 import type { RecurrenceDraft } from '../shared/recurrence';
 
@@ -41,6 +42,9 @@ export interface Api {
       occurrenceStart?: string;
     }) => Promise<void>;
   };
+  periods: {
+    list: () => Promise<Period[]>;
+  };
   window: {
     setView: (payload: { view: ViewName }) => Promise<{ maximized: boolean } | null>;
     minimize: () => Promise<void>;
@@ -65,6 +69,9 @@ export function buildApi(ipc: Pick<IpcRenderer, 'invoke'>): Api {
       create: (input) => ipc.invoke(CHANNELS.schedulesCreate, input),
       update: (input) => ipc.invoke(CHANNELS.schedulesUpdate, input),
       delete: (input) => ipc.invoke(CHANNELS.schedulesDelete, input),
+    },
+    periods: {
+      list: () => ipc.invoke(CHANNELS.periodsList),
     },
     window: {
       setView: (payload) => ipc.invoke(CHANNELS.windowSetView, payload),

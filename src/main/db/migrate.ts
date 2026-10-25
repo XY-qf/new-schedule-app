@@ -1,12 +1,13 @@
 import type { Db } from './driver';
 import { m001 } from './migrations/001_init';
+import { m002 } from './migrations/002_periods';
 
 export interface Migration {
   version: number;
   up: (db: Db) => void;
 }
 
-export const MIGRATIONS: Migration[] = [m001];
+export const MIGRATIONS: Migration[] = [m001, m002];
 
 /**
  * 按 version 升序执行尚未应用的迁移。

@@ -16,6 +16,7 @@ import {
 } from '../repo/schedules';
 import { listOccurrenceViews } from '../service/calendar';
 import { upsertException } from '../repo/exceptions';
+import { listPeriods } from '../repo/periods';
 import { boundsForView, type Rect, type ViewName } from '../window/bounds';
 
 export function registerIpcHandlers(db: Db): void {
@@ -87,6 +88,8 @@ export function registerIpcHandlers(db: Db): void {
       deleteSchedule(db, payload.id);
     },
   );
+
+  ipcMain.handle(CHANNELS.periodsList, () => listPeriods(db));
 
   ipcMain.handle(CHANNELS.windowSetView, (event, payload: { view: ViewName }) => {
     const win = BrowserWindow.fromWebContents(event.sender);
