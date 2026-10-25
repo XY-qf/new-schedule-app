@@ -6,6 +6,8 @@ const MIN_HEIGHT = 18;
 
 export interface DayItem {
   scheduleId: string;
+  /** 实例身份键：原始 startAt（end_only 用 endAt），用于「只改这一次」 */
+  occurrenceKey: string;
   title: string;
   color: string;
   isDone: boolean;
@@ -23,7 +25,7 @@ export interface DayColumnProps {
   date: string;
   isToday: boolean;
   items: DayItem[];
-  onSelect: (scheduleId: string) => void;
+  onSelect: (scheduleId: string, occurrenceStart: string) => void;
 }
 
 export function DayColumn({ index, isToday, items, onSelect }: DayColumnProps): JSX.Element {
@@ -61,7 +63,7 @@ export function DayColumn({ index, isToday, items, onSelect }: DayColumnProps): 
               width: `${p.widthRatio * 100}%`,
               ['--ev-color' as string]: item.color,
             }}
-            onClick={() => onSelect(p.id)}
+            onClick={() => onSelect(p.id, item.occurrenceKey)}
           >
             <span className="ev-title truncate">{item.title}</span>
             <span className="ev-meta">{item.label}</span>
@@ -77,7 +79,7 @@ export function DayColumn({ index, isToday, items, onSelect }: DayColumnProps): 
           data-testid={`point-${p.scheduleId}`}
           data-done={p.isDone ? 'true' : 'false'}
           style={{ top: p.startMin * PX_PER_MINUTE, ['--ev-color' as string]: p.color }}
-          onClick={() => onSelect(p.scheduleId)}
+          onClick={() => onSelect(p.scheduleId, p.occurrenceKey)}
         >
           <span className="point__bar" />
           <span className="point__label truncate">{p.title}</span>

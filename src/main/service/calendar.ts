@@ -3,6 +3,7 @@ import type { OccurrenceView, Schedule } from '../../shared/types';
 import { expandOccurrences, type Recurrence } from '../../shared/recurrence';
 import { listCategories } from '../repo/categories';
 import { listSchedulesByRange } from '../repo/schedules';
+import { listExceptions, occurrenceKey, type ScheduleException } from '../repo/exceptions';
 
 interface RecurrenceRow {
   id: string;
@@ -39,6 +40,11 @@ export function listOccurrenceViews(db: Db, start: string, end: string): Occurre
   const colorByCategory = new Map(listCategories(db).map((c) => [c.id, c.color]));
   const schedules = listSchedulesByRange(db, start, end);
 
+  const exceptionByKey = new Map<string, ScheduleException>();
+  for (const ex of listExceptions(db, start, end)) {
+    exceptionByKey.set(`${ex.scheduleId}|${ex.occurrenceStart}`, ex);
+  }
+
   const views: OccurrenceView[] = [];
 
   for (const schedule of schedules) {
@@ -46,16 +52,23 @@ export function listOccurrenceViews(db: Db, start: string, end: string): Occurre
     const occurrences = expandOccurrences(schedule, recurrence, start, end);
 
     for (const occurrence of occurrences) {
+      const key = occurrenceKey(occurrence);
+      const exception = exceptionByKey.get(`${schedule.id}|${key}`);
+      const override = exception?.override ?? null;
+
+      // 删掉这一次：不产出实例。
+      if (exception?.isDeleted) continue;
+
       views.push({
         scheduleId: occurrence.scheduleId,
-        startAt: occurrence.startAt,
-        endAt: occurrence.endAt,
+        startAt: override && 'startAt' in override ? (override.startAt ?? null) : occurrence.startAt,
+        endAt: override && 'endAt' in override ? (override.endAt ?? null) : occurrence.endAt,
         isAllDay: occurrence.isAllDay,
-        title: schedule.title,
+        title: exception?.override?.title ?? schedule.title,
         categoryId: schedule.categoryId,
         categoryColor: colorByCategory.get(schedule.categoryId) ?? '#8E8E93',
         timeType: schedule.timeType,
-        isDone: schedule.isDone,
+        isDone: exception ? exception.isDone : schedule.isDone,
       });
     }
   }

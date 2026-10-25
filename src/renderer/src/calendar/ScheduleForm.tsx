@@ -6,6 +6,8 @@ import { RecurrenceEditor } from './RecurrenceEditor';
 export interface ScheduleFormProps {
   categories: Category[];
   initial?: Schedule;
+  /** 被点开的那一次的原始开始时间，用于「只改这一次」 */
+  occurrenceStart?: string;
   onSaved: (schedule: Schedule) => void;
   onDeleted?: () => void;
   onCancel: () => void;
@@ -40,6 +42,7 @@ function initialMode(initial?: Schedule): Mode {
 export function ScheduleForm({
   categories,
   initial,
+  occurrenceStart,
   onSaved,
   onDeleted,
   onCancel,
@@ -54,6 +57,8 @@ export function ScheduleForm({
     initial?.isAllDay && initial.endAt ? initial.endAt.slice(0, 10) : '',
   );
   const [recurrence, setRecurrence] = useState<RecurrenceDraft | null>(null);
+  const isRecurring = Boolean(initial?.recurrenceId);
+  const [scope, setScope] = useState<'one' | 'series'>('one');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -120,7 +125,12 @@ export function ScheduleForm({
       if (!api) throw new Error('未连接到主进程');
 
       const saved = initial
-        ? await api.schedules.update({ id: initial.id, patch: payload })
+        ? await api.schedules.update({
+            id: initial.id,
+            patch: payload,
+            scope: isRecurring ? scope : undefined,
+            occurrenceStart,
+          })
         : await api.schedules.create({ ...payload, recurrence });
 
       onSaved(saved);
@@ -133,12 +143,20 @@ export function ScheduleForm({
 
   const remove = async (): Promise<void> => {
     if (!initial) return;
-    if (!window.confirm(`删除「${initial.title}」？`)) return;
+    const question =
+      isRecurring && scope === 'one'
+        ? `只删除这一次「${initial.title}」？`
+        : `删除「${initial.title}」？`;
+    if (!window.confirm(question)) return;
 
     setSaving(true);
     setError(null);
     try {
-      await window.api?.schedules.delete({ id: initial.id });
+      await window.api?.schedules.delete({
+        id: initial.id,
+        scope: isRecurring ? scope : undefined,
+        occurrenceStart,
+      });
       onDeleted?.();
     } catch (cause) {
       setError(toUserMessage(cause));
@@ -246,6 +264,32 @@ export function ScheduleForm({
             <RecurrenceEditor value={recurrence} onChange={setRecurrence} />
           </>
         )}
+
+        {isRecurring ? (
+          <>
+            <div className="form__label">改动范围</div>
+            <div className="form__row" data-testid="scope-switch">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={scope === 'one'}
+                className={scope === 'one' ? 'chip is-on' : 'chip'}
+                onClick={() => setScope('one')}
+              >
+                仅这一次
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={scope === 'series'}
+                className={scope === 'series' ? 'chip is-on' : 'chip'}
+                onClick={() => setScope('series')}
+              >
+                整个序列
+              </button>
+            </div>
+          </>
+        ) : null}
 
         {hint ? (
           <p className="form__error" role="alert">

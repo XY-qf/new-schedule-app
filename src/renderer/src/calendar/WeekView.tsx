@@ -17,7 +17,7 @@ export interface WeekViewProps {
   onPrevWeek: () => void;
   onNextWeek: () => void;
   onToday: () => void;
-  onSelect: (scheduleId: string) => void;
+  onSelect: (scheduleId: string, occurrenceStart: string) => void;
 }
 
 export function WeekView({
@@ -66,7 +66,7 @@ export function WeekView({
     return map;
   }, [dates, occurrences]);
 
-  const select = useCallback((id: string) => onSelect(id), [onSelect]);
+  const select = useCallback((id: string, key: string) => onSelect(id, key), [onSelect]);
 
   return (
     <div className="cal">
@@ -113,7 +113,7 @@ export function WeekView({
                   type="button"
                   className={item.isDone ? 'allday-pill is-done' : 'allday-pill'}
                   style={{ ['--ev-color' as string]: item.categoryColor }}
-                  onClick={() => select(item.scheduleId)}
+                  onClick={() => select(item.scheduleId, item.startAt ?? item.endAt ?? '')}
                 >
                   {item.title}
                 </button>

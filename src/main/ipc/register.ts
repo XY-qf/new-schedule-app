@@ -15,6 +15,7 @@ import {
   type ScheduleInput,
 } from '../repo/schedules';
 import { listOccurrenceViews } from '../service/calendar';
+import { upsertException } from '../repo/exceptions';
 import { boundsForView, type Rect, type ViewName } from '../window/bounds';
 
 export function registerIpcHandlers(db: Db): void {
@@ -47,12 +48,45 @@ export function registerIpcHandlers(db: Db): void {
   );
   ipcMain.handle(
     CHANNELS.schedulesUpdate,
-    (_e, payload: { id: string; patch: Partial<ScheduleInput> }) =>
-      updateSchedule(db, payload.id, payload.patch),
+    (
+      _e,
+      payload: {
+        id: string;
+        patch: Partial<ScheduleInput>;
+        scope?: 'one' | 'series';
+        occurrenceStart?: string;
+      },
+    ) => {
+      // 「只改这一次」不碰日程行，写成例外；「改整个序列」才动原行。
+      if (payload.scope === 'one' && payload.occurrenceStart) {
+        upsertException(db, {
+          scheduleId: payload.id,
+          occurrenceStart: payload.occurrenceStart,
+          override: {
+            ...(payload.patch.title !== undefined ? { title: payload.patch.title } : {}),
+            ...(payload.patch.startAt !== undefined ? { startAt: payload.patch.startAt } : {}),
+            ...(payload.patch.endAt !== undefined ? { endAt: payload.patch.endAt } : {}),
+          },
+        });
+        return getSchedule(db, payload.id);
+      }
+      return updateSchedule(db, payload.id, payload.patch);
+    },
   );
-  ipcMain.handle(CHANNELS.schedulesDelete, (_e, payload: { id: string }) => {
-    deleteSchedule(db, payload.id);
-  });
+  ipcMain.handle(
+    CHANNELS.schedulesDelete,
+    (_e, payload: { id: string; scope?: 'one' | 'series'; occurrenceStart?: string }) => {
+      if (payload.scope === 'one' && payload.occurrenceStart) {
+        upsertException(db, {
+          scheduleId: payload.id,
+          occurrenceStart: payload.occurrenceStart,
+          isDeleted: true,
+        });
+        return;
+      }
+      deleteSchedule(db, payload.id);
+    },
+  );
 
   ipcMain.handle(CHANNELS.windowSetView, (event, payload: { view: ViewName }) => {
     const win = BrowserWindow.fromWebContents(event.sender);

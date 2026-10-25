@@ -25,6 +25,7 @@ export function App(): JSX.Element {
   const [occurrences, setOccurrences] = useState<OccurrenceView[]>([]);
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Schedule | null>(null);
+  const [editingKey, setEditingKey] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [maximized, setMaximized] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
@@ -84,15 +85,17 @@ export function App(): JSX.Element {
 
   const openCreate = (): void => {
     setEditing(null);
+    setEditingKey(null);
     setFormOpen(true);
   };
 
-  const openEdit = useCallback(async (scheduleId: string): Promise<void> => {
+  const openEdit = useCallback(async (scheduleId: string, occurrenceStart: string): Promise<void> => {
     const api = window.api;
     if (!api) return;
     try {
       const schedule = await api.schedules.get({ id: scheduleId });
       setEditing(schedule);
+      setEditingKey(occurrenceStart);
       setFormOpen(true);
     } catch (cause) {
       setLoadError(cause instanceof Error ? cause.message : String(cause));
@@ -102,6 +105,7 @@ export function App(): JSX.Element {
   const closeForm = useCallback((): void => {
     setFormOpen(false);
     setEditing(null);
+    setEditingKey(null);
     void reload();
   }, [reload]);
 
@@ -188,8 +192,8 @@ export function App(): JSX.Element {
               onPrev={goPrev}
               onNext={goNext}
               onToday={goToday}
-              onSelect={(id) => {
-                void openEdit(id);
+              onSelect={(id, occKey) => {
+                void openEdit(id, occKey);
               }}
             />
           ) : mode === 'month' ? (
@@ -203,8 +207,8 @@ export function App(): JSX.Element {
               onPrev={goPrev}
               onNext={goNext}
               onToday={goToday}
-              onSelect={(id) => {
-                void openEdit(id);
+              onSelect={(id, occKey) => {
+                void openEdit(id, occKey);
               }}
             />
           ) : (
@@ -217,8 +221,8 @@ export function App(): JSX.Element {
               onPrevWeek={goPrev}
               onNextWeek={goNext}
               onToday={goToday}
-              onSelect={(id) => {
-                void openEdit(id);
+              onSelect={(id, occKey) => {
+                void openEdit(id, occKey);
               }}
             />
           )
@@ -240,6 +244,7 @@ export function App(): JSX.Element {
           <ScheduleForm
             categories={categories}
             initial={editing ?? undefined}
+            occurrenceStart={editingKey ?? undefined}
             onSaved={handleSaved}
             onDeleted={() => {
               closeForm();

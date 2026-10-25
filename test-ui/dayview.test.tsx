@@ -113,6 +113,6 @@ describe('DayView', () => {
     const onSelect = vi.fn();
     renderDay({ onSelect });
     fireEvent.click(screen.getByTestId('block-s1'));
-    expect(onSelect).toHaveBeenCalledWith('s1');
+    expect(onSelect).toHaveBeenCalledWith('s1', '2026-10-23T08:00:00');
   });
 });

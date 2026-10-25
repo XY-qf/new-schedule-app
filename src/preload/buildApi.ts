@@ -33,8 +33,13 @@ export interface Api {
       patch: Partial<ScheduleInput> & { isDone?: boolean };
       /** M2 用：只改这一次 / 改整个序列 */
       scope?: 'one' | 'series';
+      occurrenceStart?: string;
     }) => Promise<Schedule>;
-    delete: (input: { id: string; scope?: 'one' | 'series' }) => Promise<void>;
+    delete: (input: {
+      id: string;
+      scope?: 'one' | 'series';
+      occurrenceStart?: string;
+    }) => Promise<void>;
   };
   window: {
     setView: (payload: { view: ViewName }) => Promise<{ maximized: boolean } | null>;

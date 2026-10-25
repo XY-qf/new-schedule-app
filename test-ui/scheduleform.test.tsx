@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { ScheduleForm } from '../src/renderer/src/calendar/ScheduleForm';
-import type { Category } from '../src/shared/types';
+import type { Category, Schedule } from '../src/shared/types';
 
 const cats: Category[] = [
   { id: 'cat-course', name: '课程', color: '#4C8DFF', remindEnabled: true, sortOrder: 0, isBuiltin: true },
@@ -142,5 +142,84 @@ describe('ScheduleForm · 校验提示（人工验收反馈）', () => {
     render(<ScheduleForm categories={cats} onSaved={() => {}} onCancel={() => {}} />);
     fireEvent.change(screen.getByLabelText('标题'), { target: { value: '高数' } });
     expect(screen.getByRole('alert').textContent).toContain('请选择开始时间');
+  });
+});
+
+describe('ScheduleForm · 重复日程的改动范围（T18）', () => {
+  const recurring: Schedule = {
+    id: 'r1', title: '每周二的课', categoryId: 'cat-course', timeType: 'range',
+    isAllDay: false, startAt: '2026-10-20T08:00:00', endAt: '2026-10-20T09:35:00',
+    recurrenceId: 'rec-1', periodStart: null, periodEnd: null, sortHint: null,
+    location: null, note: null, isInTodo: false, isDone: false, doneAt: null,
+    createdAt: 't', updatedAt: 't',
+  };
+
+  it('重复日程才显示改动范围，默认「仅这一次」', () => {
+    render(
+      <ScheduleForm
+        categories={cats}
+        initial={recurring}
+        occurrenceStart="2026-10-20T08:00:00"
+        onSaved={() => {}}
+        onCancel={() => {}}
+      />,
+    );
+    expect(screen.getByTestId('scope-switch')).toBeTruthy();
+    expect(screen.getByRole('radio', { name: '仅这一次' }).getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('选「仅这一次」时提交带上 scope=one 与原始 occurrenceStart', async () => {
+    render(
+      <ScheduleForm
+        categories={cats}
+        initial={recurring}
+        occurrenceStart="2026-10-20T08:00:00"
+        onSaved={() => {}}
+        onCancel={() => {}}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText('标题'), { target: { value: '改这一次' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
+
+    await vi.waitFor(() => expect(update).toHaveBeenCalled());
+    expect(update.mock.calls[0]![0]).toEqual(
+      expect.objectContaining({
+        id: 'r1',
+        scope: 'one',
+        occurrenceStart: '2026-10-20T08:00:00',
+      }),
+    );
+  });
+
+  it('选「整个序列」时 scope=series', async () => {
+    render(
+      <ScheduleForm
+        categories={cats}
+        initial={recurring}
+        occurrenceStart="2026-10-20T08:00:00"
+        onSaved={() => {}}
+        onCancel={() => {}}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('radio', { name: '整个序列' }));
+    fireEvent.change(screen.getByLabelText('标题'), { target: { value: '改全部' } });
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
+
+    await vi.waitFor(() => expect(update).toHaveBeenCalled());
+    expect(update.mock.calls[0]![0]).toEqual(expect.objectContaining({ scope: 'series' }));
+  });
+
+  it('单次日程不显示改动范围', () => {
+    render(
+      <ScheduleForm
+        categories={cats}
+        initial={{ ...recurring, recurrenceId: null }}
+        onSaved={() => {}}
+        onCancel={() => {}}
+      />,
+    );
+    expect(screen.queryByTestId('scope-switch')).toBeNull();
   });
 });

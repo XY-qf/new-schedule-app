@@ -52,6 +52,7 @@ export function timedFor(items: OccurrenceView[], date: string): DayItem[] {
       const minute = minutesOf(at);
       result.push({
         scheduleId: item.scheduleId,
+        occurrenceKey: item.startAt ?? item.endAt ?? '',
         title: item.title,
         color: item.categoryColor,
         isDone: item.isDone,
@@ -79,6 +80,7 @@ export function timedFor(items: OccurrenceView[], date: string): DayItem[] {
 
     result.push({
       scheduleId: item.scheduleId,
+      occurrenceKey: item.startAt ?? item.endAt ?? '',
       title: item.title,
       color: item.categoryColor,
       isDone: item.isDone,

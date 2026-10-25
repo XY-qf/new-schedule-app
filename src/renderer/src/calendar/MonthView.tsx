@@ -16,7 +16,7 @@ export interface MonthViewProps {
   onPrev: () => void;
   onNext: () => void;
   onToday: () => void;
-  onSelect: (scheduleId: string) => void;
+  onSelect: (scheduleId: string, occurrenceStart: string) => void;
 }
 
 function monthLabel(anchor: string): string {
@@ -26,6 +26,7 @@ function monthLabel(anchor: string): string {
 
 interface Bar {
   scheduleId: string;
+  occurrenceKey: string;
   title: string;
   color: string;
   isDone: boolean;
@@ -52,6 +53,7 @@ export function MonthView({
       const bars: Bar[] = [
         ...allDayFor(occurrences, date).map((o) => ({
           scheduleId: o.scheduleId,
+          occurrenceKey: o.startAt ?? o.endAt ?? '',
           title: o.title,
           color: o.categoryColor,
           isDone: o.isDone,
@@ -60,6 +62,7 @@ export function MonthView({
           .filter((t) => !t.isPoint || true)
           .map((t) => ({
             scheduleId: t.scheduleId,
+            occurrenceKey: t.occurrenceKey,
             title: t.title,
             color: t.color,
             isDone: t.isDone,
@@ -122,7 +125,7 @@ export function MonthView({
                     style={{ ['--ev-color' as string]: bar.color }}
                     onClick={(e) => {
                       e.stopPropagation();
-                      onSelect(bar.scheduleId);
+                      onSelect(bar.scheduleId, bar.occurrenceKey);
                     }}
                   >
                     {bar.title}

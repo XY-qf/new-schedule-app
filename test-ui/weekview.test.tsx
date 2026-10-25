@@ -140,7 +140,7 @@ describe('WeekView', () => {
     const onSelect = vi.fn();
     renderWeek({ onSelect });
     fireEvent.click(screen.getByTestId('block-s1'));
-    expect(onSelect).toHaveBeenCalledWith('s1');
+    expect(onSelect).toHaveBeenCalledWith('s1', '2026-10-19T08:00:00');
   });
 
   it('超长标题被截断容器包住', () => {
