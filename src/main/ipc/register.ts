@@ -22,6 +22,7 @@ import { createTask, deleteTask, setTaskDone, updateTask } from '../repo/tasks';
 import { listTodoItems } from '../service/todo';
 import { createCountdown, deleteCountdown, listCountdowns, updateCountdown } from '../repo/countdowns';
 import { getSetting, setSetting } from '../repo/settings';
+import { deleteReminder, listReminders, upsertReminder } from '../repo/reminders';
 import { boundsForView, type Rect, type ViewName } from '../window/bounds';
 
 export function registerIpcHandlers(db: Db): void {
@@ -147,6 +148,30 @@ export function registerIpcHandlers(db: Db): void {
   ipcMain.handle(CHANNELS.countdownsDelete, (_e, payload: { id: string }) => {
     deleteCountdown(db, payload.id);
   });
+  ipcMain.handle(CHANNELS.remindersGet, (_e, payload: { scheduleId: string }) => {
+    const all = listReminders(db, payload.scheduleId);
+    return all[0] ?? null;
+  });
+  ipcMain.handle(
+    CHANNELS.remindersSet,
+    (
+      _e,
+      payload: {
+        scheduleId: string;
+        offsetMinutes?: number | null;
+        dayOffset?: number | null;
+        atTime?: string | null;
+      },
+    ) => {
+      // 传 null 表示「不提醒」，把这条日程的提醒删掉
+      if (payload.offsetMinutes == null && payload.dayOffset == null) {
+        deleteReminder(db, payload.scheduleId);
+        return null;
+      }
+      return upsertReminder(db, payload);
+    },
+  );
+
   ipcMain.handle(CHANNELS.settingsGet, (_e, payload: { key: string }) => getSetting(db, payload.key));
   ipcMain.handle(CHANNELS.settingsSet, (_e, payload: { key: string; value: string }) => {
     setSetting(db, payload.key, payload.value);

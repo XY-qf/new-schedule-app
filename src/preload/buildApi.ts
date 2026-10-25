@@ -5,6 +5,7 @@ import type { Period } from '../shared/periods';
 import type { TodoItem } from '../shared/todo';
 import type { Task } from '../main/repo/tasks';
 import type { Countdown } from '../main/repo/countdowns';
+import type { Reminder } from '../main/repo/reminders';
 import type { ScheduleInput } from '../main/repo/schedules';
 import type { RecurrenceDraft } from '../shared/recurrence';
 
@@ -54,6 +55,15 @@ export interface Api {
     create: (input: { title: string; targetDate: string; repeatYearly?: boolean }) => Promise<Countdown>;
     update: (input: { id: string; patch: Partial<Countdown> }) => Promise<Countdown>;
     remove: (input: { id: string }) => Promise<void>;
+  };
+  reminders: {
+    get: (input: { scheduleId: string }) => Promise<Reminder | null>;
+    set: (input: {
+      scheduleId: string;
+      offsetMinutes?: number | null;
+      dayOffset?: number | null;
+      atTime?: string | null;
+    }) => Promise<Reminder | null>;
   };
   settings: {
     get: (input: { key: string }) => Promise<string | null>;
@@ -105,6 +115,10 @@ export function buildApi(ipc: Pick<IpcRenderer, 'invoke'>): Api {
       create: (input) => ipc.invoke(CHANNELS.countdownsCreate, input),
       update: (input) => ipc.invoke(CHANNELS.countdownsUpdate, input),
       remove: (input) => ipc.invoke(CHANNELS.countdownsDelete, input),
+    },
+    reminders: {
+      get: (input) => ipc.invoke(CHANNELS.remindersGet, input),
+      set: (input) => ipc.invoke(CHANNELS.remindersSet, input),
     },
     settings: {
       get: (input) => ipc.invoke(CHANNELS.settingsGet, input),

@@ -23,6 +23,8 @@ export const CHANNELS = {
   countdownsCreate: 'countdowns:create',
   countdownsUpdate: 'countdowns:update',
   countdownsDelete: 'countdowns:delete',
+  remindersGet: 'reminders:get',
+  remindersSet: 'reminders:set',
   settingsGet: 'settings:get',
   settingsSet: 'settings:set',
   windowSetView: 'window:setView',

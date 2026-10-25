@@ -1,4 +1,4 @@
-import { useState, type JSX } from 'react';
+import { useEffect, useState, type JSX } from 'react';
 import type { Category, Schedule, TimeType } from '../../../shared/types';
 import { periodToTimeRange, type Period } from '../../../shared/periods';
 import type { RecurrenceDraft } from '../../../shared/recurrence';
@@ -77,11 +77,24 @@ export function ScheduleForm({
   );
 
   const [isInTodo, setIsInTodo] = useState(initial?.isInTodo ?? false);
+  // null = 不提醒；数字 = 提前多少分钟
+  const [remindBefore, setRemindBefore] = useState<number | null>(null);
+  const [remindLoaded, setRemindLoaded] = useState(false);
   const [recurrence, setRecurrence] = useState<RecurrenceDraft | null>(null);
   const isRecurring = Boolean(initial?.recurrenceId);
   const [scope, setScope] = useState<'one' | 'series'>('one');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 编辑已有日程时把它的提醒读出来
+  useEffect(() => {
+    if (!initial || remindLoaded) return;
+    void (async () => {
+      const existing = await window.api?.reminders?.get({ scheduleId: initial.id });
+      setRemindBefore(existing?.offsetMinutes ?? null);
+      setRemindLoaded(true);
+    })();
+  }, [initial, remindLoaded]);
 
   const byPeriod = mode === 'range' && rangeSource === 'period';
   const periodRange = byPeriod ? periodToTimeRange(periods, periodFrom, periodTo) : null;
@@ -182,6 +195,17 @@ export function ScheduleForm({
           })
         : await api.schedules.create({ ...payload, recurrence });
 
+      // 提醒跟着日程走：全天用「提前一天 + 09:00」，其余用「提前 N 分钟」
+      if (remindBefore !== null) {
+        await api.reminders?.set(
+          payload.isAllDay
+            ? { scheduleId: saved.id, dayOffset: 1, atTime: '09:00' }
+            : { scheduleId: saved.id, offsetMinutes: remindBefore },
+        );
+      } else if (initial) {
+        await api.reminders?.set({ scheduleId: saved.id, offsetMinutes: null });
+      }
+
       onSaved(saved);
     } catch (cause) {
       setError(toUserMessage(cause));
@@ -229,6 +253,28 @@ export function ScheduleForm({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
+
+        <div className="form__label">提醒</div>
+        <div className="form__row" data-testid="remind-row">
+          {[
+            { value: null, label: '不提醒' },
+            { value: 0, label: '准时' },
+            { value: 5, label: '提前 5 分钟' },
+            { value: 10, label: '提前 10 分钟' },
+            { value: 30, label: '提前 30 分钟' },
+          ].map((opt) => (
+            <button
+              key={String(opt.value)}
+              type="button"
+              role="radio"
+              aria-checked={remindBefore === opt.value}
+              className={remindBefore === opt.value ? 'chip is-on' : 'chip'}
+              onClick={() => setRemindBefore(opt.value)}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
 
         <div className="form__label">分类</div>
         <div className="form__row">
