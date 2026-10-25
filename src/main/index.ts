@@ -1,9 +1,23 @@
-import { app, BrowserWindow, ipcMain, screen } from 'electron';
+import { app, BrowserWindow, screen } from 'electron';
 import { join } from 'node:path';
 import { APP_USER_MODEL_ID } from '../shared/app-info';
-import { boundsForView, type ViewName } from './window/bounds';
+import { openDatabase } from './db/connection';
+import { runMigrations } from './db/migrate';
+import { ensureSeedCategories } from './repo/categories';
+import { registerIpcHandlers } from './ipc/register';
+import { boundsForView } from './window/bounds';
+import type { Db } from './db/driver';
 
 let mainWindow: BrowserWindow | null = null;
+let db: Db | null = null;
+
+function initDatabase(): Db {
+  const file = join(app.getPath('userData'), 'data', 'app.db');
+  const database = openDatabase(file);
+  runMigrations(database);
+  ensureSeedCategories(database);
+  return database;
+}
 
 function createWindow(): void {
   const display = screen.getPrimaryDisplay();
@@ -41,21 +55,15 @@ function createWindow(): void {
   mainWindow = win;
 }
 
-ipcMain.handle('window:setView', (_event, payload: { view: ViewName }) => {
-  const win = BrowserWindow.getFocusedWindow() ?? mainWindow;
-  if (!win) return null;
-
-  const display = screen.getDisplayMatching(win.getBounds());
-  const next = boundsForView(payload.view, { workArea: display.workArea }, win.getContentBounds());
-  win.setContentBounds(next);
-  return next;
-});
-
 void app.whenReady().then(() => {
   app.setAppUserModelId(APP_USER_MODEL_ID);
+  db = initDatabase();
+  registerIpcHandlers(db);
   createWindow();
 });
 
 app.on('window-all-closed', () => {
+  db?.close();
+  db = null;
   app.quit();
 });
