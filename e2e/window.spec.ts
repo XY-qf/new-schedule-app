@@ -1,10 +1,14 @@
 import { test, expect, _electron as electron } from '@playwright/test';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
+import { mkdirSync } from 'node:fs';
 
 const appRoot = join(__dirname, '..');
 const requireCjs = createRequire(__filename);
 const electronPath = requireCjs('electron') as unknown as string;
+
+/** 数据目录必须落在工作区内：本机沙箱不允许写 %APPDATA% / %TEMP%。 */
+const USER_DATA = join(appRoot, '.tmp', 'ai-todo-window');
 
 /** 若宿主环境设了 ELECTRON_RUN_AS_NODE，Electron 会以纯 Node 启动、拿不到 app，必须剥掉。 */
 function cleanEnv(): Record<string, string> {
@@ -13,6 +17,8 @@ function cleanEnv(): Record<string, string> {
     if (key.toUpperCase() === 'ELECTRON_RUN_AS_NODE' || value === undefined) continue;
     env[key] = value;
   }
+  mkdirSync(USER_DATA, { recursive: true });
+  env.AI_TODO_USER_DATA = USER_DATA;
   // 托盘常驻后「关闭 = 隐藏」；测试里必须能真退出，否则下一条用例会被单实例锁挡住。
   env.AI_TODO_TEST_QUIT_ON_CLOSE = '1';
   return env;
@@ -27,7 +33,7 @@ const TOLERANCE = 4;
 test('启动即为日历尺寸，切到待办变窄', async () => {
   const app = await electron.launch({
     executablePath: electronPath,
-    args: [appRoot],
+    args: [appRoot, '--no-sandbox'],
     env: cleanEnv(),
   });
   const page = await app.firstWindow();
@@ -55,7 +61,7 @@ test('启动即为日历尺寸，切到待办变窄', async () => {
 test('最大化后切到待办，窗口仍是窄形态（FR-5.2.6）', async () => {
   const app = await electron.launch({
     executablePath: electronPath,
-    args: [appRoot],
+    args: [appRoot, '--no-sandbox'],
     env: cleanEnv(),
   });
   const page = await app.firstWindow();

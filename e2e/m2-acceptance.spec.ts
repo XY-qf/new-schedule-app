@@ -2,12 +2,11 @@ import { test, expect, _electron as electron } from '@playwright/test';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
 import { mkdirSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 
 const requireCjs = createRequire(__filename);
 const electronPath = requireCjs('electron') as unknown as string;
 const appRoot = join(__dirname, '..');
-const USER_DATA = join(tmpdir(), 'ai-todo-m2');
+const USER_DATA = join(appRoot, '.tmp', 'ai-todo-m2');
 
 function cleanEnv(): Record<string, string> {
   const env: Record<string, string> = {};
@@ -36,7 +35,7 @@ test('M2 闭环：周/月/日切换 + 重复日程 + 只改这一次', async () 
 
   const app = await electron.launch({
     executablePath: electronPath,
-    args: [appRoot],
+    args: [appRoot, '--no-sandbox'],
     env: cleanEnv(),
   });
   const page = await app.firstWindow();

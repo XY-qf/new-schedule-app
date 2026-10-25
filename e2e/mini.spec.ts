@@ -2,12 +2,11 @@ import { test, expect, _electron as electron } from '@playwright/test';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
 import { mkdirSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 
 const requireCjs = createRequire(__filename);
 const electronPath = requireCjs('electron') as unknown as string;
 const appRoot = join(__dirname, '..');
-const USER_DATA = join(tmpdir(), 'ai-todo-mini');
+const USER_DATA = join(appRoot, '.tmp', 'ai-todo-mini');
 
 function cleanEnv(): Record<string, string> {
   const env: Record<string, string> = {};
@@ -30,7 +29,7 @@ test('到点弹迷你提醒窗，点关闭后消失', async () => {
 
   const app = await electron.launch({
     executablePath: electronPath,
-    args: [appRoot],
+    args: [appRoot, '--no-sandbox'],
     env: cleanEnv(),
   });
   const page = await app.firstWindow();

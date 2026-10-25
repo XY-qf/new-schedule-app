@@ -1,0 +1,31 @@
+appId: com.aidaiiban.app
+productName: AI待办软件
+copyright: MIT
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - out/**
+  - package.json
+
+# node-sqlite3-wasm 运行时要用 fs 读自己的 .wasm，塞进 asar 会读不到
+asarUnpack:
+  - '**/node-sqlite3-wasm/**'
+
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: ${productName}-${version}-setup.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: AI待办软件
+  deleteAppDataOnUninstall: false

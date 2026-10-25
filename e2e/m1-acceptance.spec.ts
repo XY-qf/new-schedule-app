@@ -2,13 +2,12 @@ import { test, expect, _electron as electron } from '@playwright/test';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
 import { mkdirSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 
 const requireCjs = createRequire(__filename);
 const electronPath = requireCjs('electron') as unknown as string;
 const appRoot = join(__dirname, '..');
 
-const USER_DATA = join(tmpdir(), 'ai-todo-acceptance');
+const USER_DATA = join(appRoot, '.tmp', 'ai-todo-acceptance');
 
 function cleanEnv(): Record<string, string> {
   const env: Record<string, string> = {};
@@ -37,7 +36,7 @@ test('M1 闭环：建 → 改 → 重启仍在 → 删', async () => {
   // ---- 第一次启动：新建 ----
   const app = await electron.launch({
     executablePath: electronPath,
-    args: [appRoot],
+    args: [appRoot, '--no-sandbox'],
     env: cleanEnv(),
   });
   const page = await app.firstWindow();
@@ -65,7 +64,7 @@ test('M1 闭环：建 → 改 → 重启仍在 → 删', async () => {
   // ---- 第二次启动：数据必须还在 ----
   const app2 = await electron.launch({
     executablePath: electronPath,
-    args: [appRoot],
+    args: [appRoot, '--no-sandbox'],
     env: cleanEnv(),
   });
   const page2 = await app2.firstWindow();

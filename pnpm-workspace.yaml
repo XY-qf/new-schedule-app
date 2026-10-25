@@ -2,3 +2,6 @@ onlyBuiltDependencies:
   - better-sqlite3
   - electron
   - esbuild
+
+# pnpm exec 默认会先跑一次隐式安装，会把手工补好的 Electron 二进制冲掉
+verifyDepsBeforeRun: false
