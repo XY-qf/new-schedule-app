@@ -49,3 +49,38 @@ test('启动即为日历尺寸，切到待办变窄', async () => {
 
   await app.close();
 });
+
+test('最大化后切到待办，窗口仍是窄形态（FR-5.2.6）', async () => {
+  const app = await electron.launch({
+    executablePath: electronPath,
+    args: [appRoot],
+    env: cleanEnv(),
+  });
+  const page = await app.firstWindow();
+  await page.waitForTimeout(500);
+
+  await page.getByRole('button', { name: '最大化' }).click();
+  await expect
+    .poll(async () => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.isMaximized()))
+    .toBe(true);
+  await expect(page.getByRole('button', { name: '还原' })).toBeVisible();
+
+  await page.getByRole('tab', { name: '待办' }).click();
+
+  await expect
+    .poll(async () => {
+      const b = await app.evaluate(({ BrowserWindow }) =>
+        BrowserWindow.getAllWindows()[0]!.getContentBounds(),
+      );
+      return `${Math.abs(b.width - 400) <= TOLERANCE}`;
+    })
+    .toBe('true');
+
+  const stillMaximized = await app.evaluate(({ BrowserWindow }) =>
+    BrowserWindow.getAllWindows()[0]!.isMaximized(),
+  );
+  expect(stillMaximized).toBe(false);
+
+  await app.close();
+});
+

@@ -1,12 +1,15 @@
 import { app, BrowserWindow, screen } from 'electron';
 import { join } from 'node:path';
-import { APP_USER_MODEL_ID } from '../shared/app-info';
+import { APP_NAME, APP_USER_MODEL_ID } from '../shared/app-info';
 import { openDatabase } from './db/connection';
 import { runMigrations } from './db/migrate';
 import { ensureSeedCategories } from './repo/categories';
 import { registerIpcHandlers } from './ipc/register';
 import { boundsForView } from './window/bounds';
 import type { Db } from './db/driver';
+
+// 应用名决定 %APPDATA% 下的数据目录名；PRD 第 9 节要求是「AI待办软件」。
+app.setName(APP_NAME);
 
 let mainWindow: BrowserWindow | null = null;
 let db: Db | null = null;

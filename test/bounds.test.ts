@@ -39,3 +39,31 @@ describe('boundsForView', () => {
     expect(r.x).toBe(1920 + (1920 - 400) / 2);
   });
 });
+
+describe('boundsForView · 多显示器与缩放边界', () => {
+  it('左侧副屏（负坐标）也按该屏工作区居中', () => {
+    const left = { workArea: { x: -1920, y: 0, width: 1920, height: 1040 } };
+    const r = boundsForView('calendar', left);
+    expect(r.x).toBe(-1920 + (1920 - 1000) / 2);
+    expect(r.y).toBe(170);
+  });
+
+  it('工作区高度不足时收缩高度，不溢出任务栏', () => {
+    // 待办视图高 822，1366x768 的工作区只有 728 高，必须收缩到 728。
+    const small = { workArea: { x: 0, y: 0, width: 1366, height: 728 } };
+    const r = boundsForView('todo', small);
+    expect(r.height).toBe(728);
+    expect(r.y).toBe(0);
+  });
+
+  it('反复切换不会越切越小（尺寸恒定）', () => {
+    const area = { workArea: { x: 0, y: 0, width: 1920, height: 1040 } };
+    let prev = boundsForView('calendar', area);
+    for (let i = 0; i < 10; i += 1) {
+      prev = boundsForView('todo', area, prev);
+      prev = boundsForView('calendar', area, prev);
+    }
+    expect(prev.width).toBe(1000);
+    expect(prev.height).toBe(700);
+  });
+});

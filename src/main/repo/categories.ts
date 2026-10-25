@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { Db } from '../db/driver';
 import type { Category } from '../../shared/types';
+import { CATEGORY_PALETTE, isPaletteColor } from '../../shared/palette';
 
 interface CategoryRow {
   id: string;
@@ -48,6 +49,7 @@ export function ensureSeedCategories(db: Db): void {
 }
 
 export function createCategory(db: Db, input: { name: string; color: string }): Category {
+  assertColor(input.color);
   const row = db
     .prepare('SELECT COALESCE(MAX(sort_order), -1) AS m FROM categories')
     .get() as { m: number };
@@ -74,6 +76,7 @@ export function updateCategory(
   patch: { id: string; name?: string; color?: string; remindEnabled?: boolean },
 ): Category {
   const current = getCategory(db, patch.id);
+  if (patch.color !== undefined) assertColor(patch.color);
   const name = patch.name ?? current.name;
   const color = patch.color ?? current.color;
   const remindEnabled = patch.remindEnabled ?? current.remindEnabled;
@@ -119,7 +122,20 @@ export function deleteCategory(
     } else {
       db.prepare('DELETE FROM schedules WHERE category_id = ?').run(input.id);
       db.prepare('DELETE FROM tasks WHERE category_id = ?').run(input.id);
+      pruneOrphanRecurrences(db);
     }
     db.prepare('DELETE FROM categories WHERE id = ?').run(input.id);
   });
+}
+function assertColor(color: string): void {
+  if (!isPaletteColor(color)) {
+    throw new Error(`分类颜色必须从预设色板里选（${CATEGORY_PALETTE.join(' ')}）`);
+  }
+}
+
+/** 删掉不再被任何日程引用的重复规则，避免孤儿行堆积。 */
+function pruneOrphanRecurrences(db: Db): void {
+  db.exec(
+    'DELETE FROM recurrences WHERE id NOT IN (SELECT recurrence_id FROM schedules WHERE recurrence_id IS NOT NULL)',
+  );
 }

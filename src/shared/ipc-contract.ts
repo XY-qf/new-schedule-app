@@ -15,6 +15,7 @@ export const CHANNELS = {
   windowSetView: 'window:setView',
   windowMinimize: 'window:minimize',
   windowMaximizeToggle: 'window:maximizeToggle',
+  windowIsMaximized: 'window:isMaximized',
   windowCloseToTray: 'window:closeToTray',
 } as const;
 

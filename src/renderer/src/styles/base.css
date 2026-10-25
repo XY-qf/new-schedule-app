@@ -175,3 +175,31 @@ body {
   color: var(--color-now);
   font-size: 12px;
 }
+.toast {
+  position: absolute;
+  left: 50%;
+  bottom: 74px;
+  transform: translateX(-50%);
+  padding: 7px 14px;
+  border-radius: 8px;
+  background: var(--color-text);
+  color: var(--color-panel);
+  font-size: 12px;
+  box-shadow: 0 6px 18px rgba(48, 43, 38, 0.28);
+}
+
+/* 标签栏整条可拖，但其中的按钮必须可点 */
+.tabbar {
+  -webkit-app-region: drag;
+}
+
+.tab,
+.tabbar .right,
+.tabbar .iconbtn {
+  -webkit-app-region: no-drag;
+}
+
+.ico-max--restore::after {
+  inset: 2px 0 0 2px;
+  border-width: 1.2px;
+}

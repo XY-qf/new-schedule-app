@@ -15,7 +15,7 @@ import {
   type ScheduleInput,
 } from '../repo/schedules';
 import { listOccurrenceViews } from '../service/calendar';
-import { boundsForView, type ViewName } from '../window/bounds';
+import { boundsForView, type Rect, type ViewName } from '../window/bounds';
 
 export function registerIpcHandlers(db: Db): void {
   ipcMain.handle(CHANNELS.categoriesList, () => listCategories(db));
@@ -58,14 +58,19 @@ export function registerIpcHandlers(db: Db): void {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (!win) return null;
 
-    // Windows 上对最大化窗口直接 setContentBounds 不可靠，先还原再设尺寸（FR-5.2.6）。
+    // 记下当前视图的最大化状态，切过去之后要能还原（FR-5.2.6）。
+    maximizedByView.set(currentView, win.isMaximized());
+
+    // Windows 上对最大化窗口直接 setContentBounds 不可靠，先还原再设尺寸。
     if (win.isMaximized()) win.unmaximize();
 
     const display = screen.getDisplayMatching(win.getBounds());
-    const next = boundsForView(payload.view, { workArea: display.workArea }, win.getContentBounds());
-    win.setMinimumSize(Math.min(400, next.width), Math.min(400, next.height));
-    win.setContentBounds(next);
-    return next;
+    const target = boundsForView(payload.view, { workArea: display.workArea }, win.getContentBounds());
+    win.setMinimumSize(380, 480);
+    animateBounds(win, target);
+
+    currentView = payload.view;
+    return { bounds: target, maximized: false };
   });
 
   ipcMain.handle(CHANNELS.windowMinimize, (event) => {
@@ -75,9 +80,19 @@ export function registerIpcHandlers(db: Db): void {
   ipcMain.handle(CHANNELS.windowMaximizeToggle, (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     if (!win) return null;
-    if (win.isMaximized()) win.unmaximize();
-    else win.maximize();
+
+    if (win.isMaximized()) {
+      win.unmaximize();
+      maximizedByView.set(currentView, false);
+    } else {
+      win.maximize();
+      maximizedByView.set(currentView, true);
+    }
     return win.isMaximized();
+  });
+
+  ipcMain.handle(CHANNELS.windowIsMaximized, (event) => {
+    return BrowserWindow.fromWebContents(event.sender)?.isMaximized() ?? false;
   });
 
   // M1 没有托盘：关闭 = 真正退出（否则窗口藏起来后用户再也没有入口找回）。
@@ -85,4 +100,49 @@ export function registerIpcHandlers(db: Db): void {
   ipcMain.handle(CHANNELS.windowCloseToTray, (event) => {
     BrowserWindow.fromWebContents(event.sender)?.close();
   });
+}
+
+/** 视图 → 是否最大化。切回来的时候按这个恢复。 */
+const maximizedByView = new Map<ViewName, boolean>();
+let currentView: ViewName = 'calendar';
+
+function isMaximizedFor(view: ViewName): boolean {
+  return maximizedByView.get(view) ?? false;
+}
+
+export { isMaximizedFor };
+
+/** 约 180ms 的窗口尺寸补间，避免切换视图时硬跳变（FR-5.2.1）。 */
+function animateBounds(win: BrowserWindow, target: Rect): void {
+  const from = win.getContentBounds();
+  const steps = 12;
+
+  if (
+    from.x === target.x &&
+    from.y === target.y &&
+    from.width === target.width &&
+    from.height === target.height
+  ) {
+    return;
+  }
+
+  let step = 0;
+  const timer = setInterval(() => {
+    step += 1;
+    const t = step / steps;
+    const ease = 1 - (1 - t) ** 3;
+
+    if (step >= steps || win.isDestroyed()) {
+      clearInterval(timer);
+      if (!win.isDestroyed()) win.setContentBounds(target);
+      return;
+    }
+
+    win.setContentBounds({
+      x: Math.round(from.x + (target.x - from.x) * ease),
+      y: Math.round(from.y + (target.y - from.y) * ease),
+      width: Math.round(from.width + (target.width - from.width) * ease),
+      height: Math.round(from.height + (target.height - from.height) * ease),
+    });
+  }, 15);
 }

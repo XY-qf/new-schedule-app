@@ -107,3 +107,41 @@ describe('分类仓储', () => {
     db.close();
   });
 });
+
+describe('分类仓储 · 色板与孤儿规则（审查 Minor 10）', () => {
+  it('颜色不在 12 色板内被拒绝', () => {
+    const db = fresh();
+    expect(() => createCategory(db, { name: '野色', color: '#123456' })).toThrow(/色板/);
+    db.close();
+  });
+
+  it('色板内的颜色可以创建', () => {
+    const db = fresh();
+    const c = createCategory(db, { name: '实习', color: '#BF5AF2' });
+    expect(c.color).toBe('#BF5AF2');
+    db.close();
+  });
+
+  it('改用非法颜色会被拒绝', () => {
+    const db = fresh();
+    const c = createCategory(db, { name: '实习', color: '#BF5AF2' });
+    expect(() => updateCategory(db, { id: c.id, color: 'red' })).toThrow(/色板/);
+    db.close();
+  });
+
+  it('连带删除后不再被引用的重复规则会被清理', () => {
+    const db = fresh();
+    const custom = createCategory(db, { name: '临时', color: '#8E8E93' });
+    db.exec("INSERT INTO recurrences (id,freq) VALUES ('r9','weekly')");
+    db.prepare(
+      `INSERT INTO schedules
+        (id,title,category_id,time_type,is_all_day,start_at,end_at,recurrence_id,created_at,updated_at)
+       VALUES ('s9','x',?,'range',0,'2026-10-19T08:00:00','2026-10-19T09:00:00','r9','t','t')`,
+    ).run(custom.id);
+
+    deleteCategory(db, { id: custom.id, strategy: 'deleteItems' });
+
+    expect(db.prepare("SELECT COUNT(*) c FROM recurrences WHERE id='r9'").get()).toEqual({ c: 0 });
+    db.close();
+  });
+});

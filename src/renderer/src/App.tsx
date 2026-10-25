@@ -15,6 +15,8 @@ export function App(): JSX.Element {
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Schedule | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [maximized, setMaximized] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   const weekEnd = useMemo(() => addDays(weekStart, 6), [weekStart]);
 
@@ -44,11 +46,19 @@ export function App(): JSX.Element {
     return () => clearInterval(timer);
   }, []);
 
+  const flash = useCallback((message: string): void => {
+    setToast(message);
+    window.setTimeout(() => setToast(null), 1800);
+  }, []);
+
   const changeView = (next: ViewName): void => {
     setView(next);
-    window.api?.window.setView({ view: next }).catch((error: unknown) => {
-      console.error('切换窗口尺寸失败', error);
-    });
+    window.api?.window
+      .setView({ view: next })
+      .then((result) => setMaximized(Boolean(result?.maximized)))
+      .catch((error: unknown) => {
+        console.error('切换窗口尺寸失败', error);
+      });
   };
 
   const openCreate = (): void => {
@@ -68,11 +78,11 @@ export function App(): JSX.Element {
     }
   }, []);
 
-  const afterWrite = (): void => {
+  const closeForm = useCallback((): void => {
     setFormOpen(false);
     setEditing(null);
     void reload();
-  };
+  }, [reload]);
 
   const handleSaved = (saved: Schedule): void => {
     // 保存到别的周时把视图切过去，否则用户会以为没保存。
@@ -83,27 +93,34 @@ export function App(): JSX.Element {
         setWeekStart(savedWeek);
         setFormOpen(false);
         setEditing(null);
+        flash('已保存到那周');
         return;
       }
     }
-    afterWrite();
+    closeForm();
+    flash('已保存');
   };
 
   const goPrevWeek = (): void => setWeekStart((w) => addDays(w, -7));
   const goNextWeek = (): void => setWeekStart((w) => addDays(w, 7));
   const goToday = (): void => {
-    setToday(todayLocal());
-    setWeekStart(startOfWeek(todayLocal()));
+    const now = todayLocal();
+    setToday(now);
+    setWeekStart(startOfWeek(now));
   };
 
   return (
     <div className="app">
       <TitleBar
+        maximized={maximized}
         onMinimize={() => {
           void window.api?.window.minimize();
         }}
         onMaximize={() => {
-          void window.api?.window.maximizeToggle();
+          window.api?.window
+            .maximizeToggle()
+            .then((value) => setMaximized(Boolean(value)))
+            .catch((error: unknown) => console.error('最大化失败', error));
         }}
         onClose={() => {
           void window.api?.window.closeToTray();
@@ -139,12 +156,21 @@ export function App(): JSX.Element {
           ＋
         </button>
 
+        {toast ? (
+          <div className="toast" role="status">
+            {toast}
+          </div>
+        ) : null}
+
         {formOpen ? (
           <ScheduleForm
             categories={categories}
             initial={editing ?? undefined}
             onSaved={handleSaved}
-            onDeleted={afterWrite}
+            onDeleted={() => {
+              closeForm();
+              flash('已删除');
+            }}
             onCancel={() => {
               setFormOpen(false);
               setEditing(null);

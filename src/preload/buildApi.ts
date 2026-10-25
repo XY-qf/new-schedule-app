@@ -34,9 +34,10 @@ export interface Api {
     delete: (input: { id: string; scope?: 'one' | 'series' }) => Promise<void>;
   };
   window: {
-    setView: (payload: { view: ViewName }) => Promise<unknown>;
+    setView: (payload: { view: ViewName }) => Promise<{ maximized: boolean } | null>;
     minimize: () => Promise<void>;
     maximizeToggle: () => Promise<boolean | null>;
+    isMaximized: () => Promise<boolean>;
     closeToTray: () => Promise<void>;
   };
 }
@@ -61,6 +62,7 @@ export function buildApi(ipc: Pick<IpcRenderer, 'invoke'>): Api {
       setView: (payload) => ipc.invoke(CHANNELS.windowSetView, payload),
       minimize: () => ipc.invoke(CHANNELS.windowMinimize),
       maximizeToggle: () => ipc.invoke(CHANNELS.windowMaximizeToggle),
+      isMaximized: () => ipc.invoke(CHANNELS.windowIsMaximized),
       closeToTray: () => ipc.invoke(CHANNELS.windowCloseToTray),
     },
   };
