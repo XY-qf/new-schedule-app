@@ -1,5 +1,5 @@
 import { useState, type JSX } from 'react';
-import { formatCountdown, daysUntil } from '../../../shared/todo';
+import { daysUntil, formatCountdownFor } from '../../../shared/todo';
 import type { Countdown } from '../../../main/repo/countdowns';
 
 export interface CountdownBlockProps {
@@ -25,7 +25,7 @@ export function CountdownBlock({
 }: CountdownBlockProps): JSX.Element {
   const nearest = items.find((c) => daysUntil(c.targetDate, today) >= 0) ?? items[0];
   const summary = nearest
-    ? `${items.length} 条 · ${nearest.title} ${formatCountdown(nearest.targetDate, today)}`
+    ? `${items.length} 条 · ${nearest.title} ${formatCountdownFor(nearest.targetDate, today, nearest.repeatYearly)}`
     : '暂无';
 
   return (
@@ -51,17 +51,19 @@ export function CountdownBlock({
             <p className="cd__empty">还没有重要日。点右上角「＋」加一个。</p>
           ) : (
             items.map((item) => {
-              const days = daysUntil(item.targetDate, today);
+              const past = daysUntil(item.targetDate, today) < 0 && !item.repeatYearly;
               return (
                 <button
                   key={item.id}
                   type="button"
-                  className={days < 0 ? 'cd__row is-past' : 'cd__row'}
+                  className={past ? 'cd__row is-past' : 'cd__row'}
                   data-testid={`cd-row-${item.id}`}
                   onClick={() => onOpen(item)}
                 >
                   <span className="cd__title truncate">{item.title}</span>
-                  <span className="cd__days">{formatCountdown(item.targetDate, today)}</span>
+                  <span className="cd__days">
+                    {formatCountdownFor(item.targetDate, today, item.repeatYearly)}
+                  </span>
                 </button>
               );
             })
@@ -73,15 +75,17 @@ export function CountdownBlock({
 }
 
 export interface CountdownFormProps {
+  /** 传入表示编辑已有重要日 */
+  initial?: Countdown;
   onSaved: () => void;
   onCancel: () => void;
 }
 
-/** 新建重要日：只有名称、日期、每年重复（PRD 6.8 的极简字段）。 */
-export function CountdownForm({ onSaved, onCancel }: CountdownFormProps): JSX.Element {
-  const [title, setTitle] = useState('');
-  const [targetDate, setTargetDate] = useState('');
-  const [repeatYearly, setRepeatYearly] = useState(false);
+/** 重要日表单：名称、日期、每年重复；编辑态可删除。 */
+export function CountdownForm({ initial, onSaved, onCancel }: CountdownFormProps): JSX.Element {
+  const [title, setTitle] = useState(initial?.title ?? '');
+  const [targetDate, setTargetDate] = useState(initial?.targetDate ?? '');
+  const [repeatYearly, setRepeatYearly] = useState(initial?.repeatYearly ?? false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -92,11 +96,33 @@ export function CountdownForm({ onSaved, onCancel }: CountdownFormProps): JSX.El
     setSaving(true);
     setError(null);
     try {
-      await window.api?.countdowns.create({
-        title: title.trim(),
-        targetDate,
-        repeatYearly,
-      });
+      const api = window.api;
+      if (!api) throw new Error('未连接到主进程');
+
+      if (initial) {
+        await api.countdowns.update({
+          id: initial.id,
+          patch: { title: title.trim(), targetDate, repeatYearly },
+        });
+      } else {
+        await api.countdowns.create({ title: title.trim(), targetDate, repeatYearly });
+      }
+      onSaved();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = async (): Promise<void> => {
+    if (!initial) return;
+    if (!window.confirm(`删除重要日「${initial.title}」？`)) return;
+
+    setSaving(true);
+    setError(null);
+    try {
+      await window.api?.countdowns.remove({ id: initial.id });
       onSaved();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause));
@@ -108,7 +134,7 @@ export function CountdownForm({ onSaved, onCancel }: CountdownFormProps): JSX.El
   return (
     <div className="form-overlay" role="dialog" aria-label="重要日表单">
       <div className="form">
-        <h2 className="form__title">新建重要日</h2>
+        <h2 className="form__title">{initial ? '编辑重要日' : '新建重要日'}</h2>
 
         <label className="form__label" htmlFor="cd-title">
           名称
@@ -139,13 +165,18 @@ export function CountdownForm({ onSaved, onCancel }: CountdownFormProps): JSX.El
             className={repeatYearly ? 'chip is-on' : 'chip'}
             onClick={() => setRepeatYearly((v) => !v)}
           >
-            每年重复
+            {repeatYearly ? '✓ ' : ''}每年重复
           </button>
         </div>
 
         {error ? <p className="form__error">{error}</p> : null}
 
         <div className="form__actions">
+          {initial ? (
+            <button type="button" className="btn btn--danger" onClick={() => void remove()}>
+              删除
+            </button>
+          ) : null}
           <button type="button" className="btn" onClick={onCancel}>
             取消
           </button>

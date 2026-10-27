@@ -33,6 +33,7 @@ export function TaskForm({ categories, initial, onSaved, onCancel }: TaskFormPro
   const [date, setDate] = useState(todayText());
   const [startClock, setStartClock] = useState('09:00');
   const [endClock, setEndClock] = useState('10:00');
+  const [remind, setRemind] = useState('none');
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,7 +69,7 @@ export function TaskForm({ categories, initial, onSaved, onCancel }: TaskFormPro
         });
       } else if (withTime) {
         // 有时间的待办 = 加入待办的日程
-        await api.schedules.create({
+        const created = await api.schedules.create({
           title: title.trim(),
           categoryId,
           timeType: 'range',
@@ -77,6 +78,11 @@ export function TaskForm({ categories, initial, onSaved, onCancel }: TaskFormPro
           endAt: `${date}T${endClock}:00`,
           isInTodo: true,
         });
+
+        // 有待办自己的提醒（反馈 #3）：纯任务没有时间，这条只在「安排时间」时出现
+        if (remind !== 'none') {
+          await api.reminders?.set({ scheduleId: created.id, offsetMinutes: Number(remind) });
+        }
       } else {
         await api.tasks.create({
           title: title.trim(),
@@ -142,29 +148,48 @@ export function TaskForm({ categories, initial, onSaved, onCancel }: TaskFormPro
             </div>
 
             {withTime ? (
-              <div className="form__row form__row--times">
-                <input
-                  className="form__input"
-                  aria-label="待办日期"
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                />
-                <input
-                  className="form__input"
-                  aria-label="待办开始时间"
-                  type="time"
-                  value={startClock}
-                  onChange={(e) => setStartClock(e.target.value)}
-                />
-                <input
-                  className="form__input"
-                  aria-label="待办结束时间"
-                  type="time"
-                  value={endClock}
-                  onChange={(e) => setEndClock(e.target.value)}
-                />
-              </div>
+              <>
+                <div className="form__row form__row--times">
+                  <input
+                    className="form__input"
+                    aria-label="待办日期"
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                  />
+                  <input
+                    className="form__input"
+                    aria-label="待办开始时间"
+                    type="time"
+                    value={startClock}
+                    onChange={(e) => setStartClock(e.target.value)}
+                  />
+                  <input
+                    className="form__input"
+                    aria-label="待办结束时间"
+                    type="time"
+                    value={endClock}
+                    onChange={(e) => setEndClock(e.target.value)}
+                  />
+                </div>
+
+                <div className="form__row">
+                  <select
+                    className="form__select"
+                    aria-label="待办提醒"
+                    value={remind}
+                    onChange={(e) => setRemind(e.target.value)}
+                  >
+                    <option value="none">不提醒</option>
+                    <option value="0">准时</option>
+                    <option value="5">提前 5 分钟</option>
+                    <option value="10">提前 10 分钟</option>
+                    <option value="15">提前 15 分钟</option>
+                    <option value="30">提前 30 分钟</option>
+                    <option value="60">提前 1 小时</option>
+                  </select>
+                </div>
+              </>
             ) : null}
           </>
         )}

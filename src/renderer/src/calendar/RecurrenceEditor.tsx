@@ -1,10 +1,13 @@
 import { useState, type JSX } from 'react';
 import type { RecurrenceDraft } from '../../../shared/recurrence';
 import { describeRecurrence } from '../../../shared/recurrence';
+import { isoWeekday } from '../../../shared/time';
 
 export interface RecurrenceEditorProps {
   value: RecurrenceDraft | null;
   onChange: (value: RecurrenceDraft | null) => void;
+  /** 日程自己的日期：选「每周/每月」时默认沿用它，用户不用再选一次 */
+  anchorDate?: string;
 }
 
 const WEEKDAY_NAMES = ['一', '二', '三', '四', '五', '六', '日'];
@@ -21,7 +24,7 @@ const FREQS: ReadonlyArray<{ id: RecurrenceDraft['freq']; label: string }> = [
  * 重复规则编辑器。`value === null` 表示不重复——这是默认状态，
  * 表单里没有 recurrenceId 的日程就是单次的。
  */
-export function RecurrenceEditor({ value, onChange }: RecurrenceEditorProps): JSX.Element {
+export function RecurrenceEditor({ value, onChange, anchorDate }: RecurrenceEditorProps): JSX.Element {
   const [untilDate, setUntilDate] = useState(value?.untilDate ?? '');
 
   const setFreq = (freq: RecurrenceDraft['freq']): void => {
@@ -29,10 +32,11 @@ export function RecurrenceEditor({ value, onChange }: RecurrenceEditorProps): JS
     const base: RecurrenceDraft = { freq, untilDate: untilDate || null };
 
     if (freq === 'weekly' || freq === 'custom') {
-      base.byWeekday = value?.byWeekday ?? [];
+      // 默认沿用日程自身是星期几，不用再选一次
+      base.byWeekday = value?.byWeekday ?? (anchorDate ? [isoWeekday(anchorDate)] : []);
     }
     if (freq === 'monthly') {
-      base.byMonthday = value?.byMonthday ?? 1;
+      base.byMonthday = value?.byMonthday ?? (anchorDate ? Number(anchorDate.slice(8, 10)) : 1);
     }
     onChange(base);
   };

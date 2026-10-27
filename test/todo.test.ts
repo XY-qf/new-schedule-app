@@ -8,7 +8,14 @@ import { ensureSeedCategories } from '../src/main/repo/categories';
 import { createSchedule } from '../src/main/repo/schedules';
 import { createTask } from '../src/main/repo/tasks';
 import { listTodoItems } from '../src/main/service/todo';
-import { daysUntil, formatTimeInfo, sortTodoItems, type TodoItem } from '../src/shared/todo';
+import {
+  daysUntil,
+  formatCountdownFor,
+  formatTimeInfo,
+  nextYearlyDate,
+  sortTodoItems,
+  type TodoItem,
+} from '../src/shared/todo';
 import type { Db } from '../src/main/db/driver';
 
 let db: Db;
@@ -177,5 +184,27 @@ describe('待办列表 · 「全部」与「无分类」的区别（回归）', 
 
     const onlyUncategorized = listTodoItems(db, { today: '2026-10-26', categoryId: null });
     expect(onlyUncategorized.map((i) => i.title)).toEqual(['无分类']);
+  });
+});
+
+describe('重要日倒计时 · 每年重复（反馈 #11）', () => {
+  it('今年的生日过了，显示到明年的天数，而不是「已过 N 天」', () => {
+    expect(formatCountdownFor('2026-05-20', '2026-10-27', true)).toBe('D-205');
+  });
+
+  it('今年还没到就显示今年的', () => {
+    expect(formatCountdownFor('2026-12-20', '2026-10-27', true)).toBe('D-54');
+  });
+
+  it('正好是今天显示「今天」', () => {
+    expect(formatCountdownFor('2020-10-27', '2026-10-27', true)).toBe('今天');
+  });
+
+  it('2 月 29 日在平年落到 2 月 28', () => {
+    expect(nextYearlyDate('2024-02-29', '2026-03-01')).toBe('2027-02-28');
+  });
+
+  it('不重复的重要日照常显示「已过」', () => {
+    expect(formatCountdownFor('2026-10-25', '2026-10-27', false)).toBe('已过 2 天');
   });
 });

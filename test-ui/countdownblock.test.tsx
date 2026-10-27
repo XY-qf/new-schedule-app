@@ -116,3 +116,64 @@ describe('CountdownForm', () => {
     });
   });
 });
+
+describe('重要日：编辑与删除（反馈 #1）', () => {
+  it('点条目把这一条回传，App 据此进入编辑', () => {
+    const onOpen = vi.fn();
+    render(
+      <CountdownBlock
+        items={items}
+        today="2026-10-25"
+        collapsed={false}
+        onToggleCollapse={() => {}}
+        onCreate={() => {}}
+        onOpen={onOpen}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('cd-row-c1'));
+    expect(onOpen).toHaveBeenCalledWith(items[0]);
+  });
+
+  it('编辑态带初值并可以删除', async () => {
+    const remove = vi.fn().mockResolvedValue(undefined);
+    (globalThis as unknown as { window: { api: unknown } }).window.api = {
+      countdowns: { remove, update: vi.fn() },
+    };
+    const onSaved = vi.fn();
+    window.confirm = () => true;
+
+    render(<CountdownForm initial={items[0]} onSaved={onSaved} onCancel={() => {}} />);
+    expect((screen.getByLabelText('重要日名称') as HTMLInputElement).value).toBe('期末考试');
+
+    fireEvent.click(screen.getByRole('button', { name: '删除' }));
+    await vi.waitFor(() => expect(remove).toHaveBeenCalledWith({ id: 'c1' }));
+    expect(onSaved).toHaveBeenCalled();
+  });
+});
+
+describe('重要日：每年重复文案（反馈 #11）', () => {
+  const birthday: Countdown = {
+    id: 'c9',
+    title: '妈妈生日',
+    targetDate: '2026-05-20',
+    repeatYearly: true,
+    color: null,
+    note: null,
+  };
+
+  it('今年已过也显示到明年的 D-，不显示「已过」', () => {
+    render(
+      <CountdownBlock
+        items={[birthday]}
+        today="2026-10-25"
+        collapsed={false}
+        onToggleCollapse={() => {}}
+        onCreate={() => {}}
+        onOpen={() => {}}
+      />,
+    );
+    const text = screen.getByTestId('cd-row-c9').textContent ?? '';
+    expect(text).toContain('D-');
+    expect(text).not.toContain('已过');
+  });
+});

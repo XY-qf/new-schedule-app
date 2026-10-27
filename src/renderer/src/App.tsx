@@ -46,6 +46,7 @@ export function App(): JSX.Element {
   const [countdowns, setCountdowns] = useState<Countdown[]>([]);
   const [countdownCollapsed, setCountdownCollapsed] = useState(true);
   const [countdownFormOpen, setCountdownFormOpen] = useState(false);
+  const [editingCountdown, setEditingCountdown] = useState<Countdown | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [theme, setTheme] = useTheme();
 
@@ -336,8 +337,14 @@ export function App(): JSX.Element {
                 value: next ? 'true' : 'false',
               });
             }}
-            onCreateCountdown={() => setCountdownFormOpen(true)}
-            onOpenCountdown={() => setCountdownFormOpen(true)}
+            onCreateCountdown={() => {
+              setEditingCountdown(null);
+              setCountdownFormOpen(true);
+            }}
+            onOpenCountdown={(item) => {
+              setEditingCountdown(item);
+              setCountdownFormOpen(true);
+            }}
           />
         )}
 
@@ -397,12 +404,17 @@ export function App(): JSX.Element {
 
         {countdownFormOpen ? (
           <CountdownForm
+            initial={editingCountdown ?? undefined}
             onSaved={() => {
               setCountdownFormOpen(false);
+              setEditingCountdown(null);
               void loadTodo();
-              flash('已添加重要日');
+              flash('已保存');
             }}
-            onCancel={() => setCountdownFormOpen(false)}
+            onCancel={() => {
+              setCountdownFormOpen(false);
+              setEditingCountdown(null);
+            }}
           />
         ) : null}
       </main>

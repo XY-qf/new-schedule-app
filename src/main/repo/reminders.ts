@@ -128,15 +128,16 @@ function fireTimeFor(
   reminder: Reminder,
   occurrence: { startAt: string | null; endAt: string | null; isAllDay: boolean },
 ): string | null {
-  // 全天：提前 day_offset 天，固定 at_time（默认 09:00）
-  if (occurrence.isAllDay) {
-    const base = (occurrence.startAt ?? occurrence.endAt ?? '').slice(0, 10);
-    if (!base) return null;
-    const day = addDays(base, -(reminder.dayOffset ?? 0));
-    return `${day}T${reminder.atTime ?? '09:00'}:00`;
+  // 「提前 N 天」：按天推，时刻取 at_time；没指定时刻时，全天用 09:00、定时用日程自己的开始时刻
+  if (reminder.dayOffset !== null) {
+    const anchor = occurrence.startAt ?? occurrence.endAt;
+    if (!anchor) return null;
+    const day = addDays(anchor.slice(0, 10), -reminder.dayOffset);
+    const fallbackTime = occurrence.isAllDay ? '09:00' : anchor.slice(11, 16) || '09:00';
+    return `${day}T${reminder.atTime ?? fallbackTime}:00`;
   }
 
-  // 有具体时刻：提前 offset_minutes 分钟
+  // 「提前 N 分钟」：从日程开始时刻往前推
   const anchor = occurrence.startAt ?? occurrence.endAt;
   if (!anchor) return null;
   return addMinutes(anchor, -(reminder.offsetMinutes ?? 0));

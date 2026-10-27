@@ -85,3 +85,34 @@ export function formatCountdown(targetDate: string, today: string): string {
   if (days > 0) return `D-${days}`;
   return `已过 ${Math.abs(days)} 天`;
 }
+
+/**
+ * 每年重复的重要日（生日、纪念日）永远只往前看：
+ * 今年的过了就算明年的，不该显示「已过 N 天」。
+ */
+export function nextYearlyDate(targetDate: string, today: string): string {
+  const [, month, day] = targetDate.split('-') as [string, string, string];
+  const thisYear = today.slice(0, 4);
+  const candidate = `${thisYear}-${month}-${day}`;
+  if (candidate >= today) return candidate;
+
+  const nextYear = String(Number(thisYear) + 1);
+  // 2 月 29 日在平年没有，落到 2 月 28
+  const leapSafe = `${month}-${day}` === '02-29' && !isLeap(Number(nextYear)) ? '02-28' : `${month}-${day}`;
+  return `${nextYear}-${leapSafe}`;
+}
+
+function isLeap(year: number): boolean {
+  return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+}
+
+/** 重要日文案：每年重复的按下一次发生日算，不显示「已过」。 */
+export function formatCountdownFor(
+  targetDate: string,
+  today: string,
+  repeatYearly: boolean,
+): string {
+  if (!repeatYearly) return formatCountdown(targetDate, today);
+  return formatCountdown(nextYearlyDate(targetDate, today), today);
+}
+

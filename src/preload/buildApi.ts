@@ -46,6 +46,7 @@ export interface Api {
       occurrenceStart?: string;
     }) => Promise<void>;
     setDone: (input: { id: string; occurrenceStart?: string; isDone: boolean }) => Promise<Schedule>;
+    clearCategory: (input: { categoryId: string }) => Promise<number>;
   };
   periods: {
     list: () => Promise<Period[]>;
@@ -122,6 +123,7 @@ export function buildApi(ipc: Pick<IpcRenderer, 'invoke'>): Api {
       update: (input) => ipc.invoke(CHANNELS.schedulesUpdate, input),
       delete: (input) => ipc.invoke(CHANNELS.schedulesDelete, input),
       setDone: (input) => ipc.invoke(CHANNELS.schedulesSetDone, input),
+      clearCategory: (input) => ipc.invoke(CHANNELS.schedulesClearCategory, input),
     },
     periods: {
       list: () => ipc.invoke(CHANNELS.periodsList),

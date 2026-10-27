@@ -10,6 +10,7 @@ import {
 import {
   createSchedule,
   deleteSchedule,
+  deleteSchedulesByCategory,
   getSchedule,
   setScheduleDone,
   updateSchedule,
@@ -103,6 +104,10 @@ export function registerIpcHandlers(db: Db): void {
       }
       deleteSchedule(db, payload.id);
     },
+  );
+
+  ipcMain.handle(CHANNELS.schedulesClearCategory, (_e, payload: { categoryId: string }) =>
+    deleteSchedulesByCategory(db, payload.categoryId),
   );
 
   ipcMain.handle(CHANNELS.periodsList, () => listPeriods(db));

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { Db } from '../db/driver';
-import { daysUntil } from '../../shared/todo';
+import { daysUntil, nextYearlyDate } from '../../shared/todo';
 
 export interface Countdown {
   id: string;
@@ -36,14 +36,22 @@ function toCountdown(row: CountdownRow): Countdown {
  * 排序（FR-6.9）：未来在前、按日期升序；已过去的排在后面，也按日期升序。
  * 同一个日期按标题稳定排序，避免每次刷新顺序抖动。
  */
+/** 每年重复的按「下一次发生日」参与排序，否则生日一过就沉到最后。 */
+function effectiveDate(item: Countdown, today: string): string {
+  return item.repeatYearly ? nextYearlyDate(item.targetDate, today) : item.targetDate;
+}
+
 export function sortCountdowns(items: Countdown[], today: string): Countdown[] {
-  const future = items
-    .filter((c) => daysUntil(c.targetDate, today) >= 0)
-    .sort((a, b) => a.targetDate.localeCompare(b.targetDate) || a.title.localeCompare(b.title));
-  const past = items
-    .filter((c) => daysUntil(c.targetDate, today) < 0)
-    .sort((a, b) => a.targetDate.localeCompare(b.targetDate) || a.title.localeCompare(b.title));
-  return [...future, ...past];
+  const withDate = items.map((item) => ({ item, date: effectiveDate(item, today) }));
+
+  const future = withDate
+    .filter((x) => daysUntil(x.date, today) >= 0)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.item.title.localeCompare(b.item.title));
+  const past = withDate
+    .filter((x) => daysUntil(x.date, today) < 0)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.item.title.localeCompare(b.item.title));
+
+  return [...future, ...past].map((x) => x.item);
 }
 
 export function listCountdowns(db: Db, today: string): Countdown[] {

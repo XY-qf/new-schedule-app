@@ -79,3 +79,13 @@ describe('设置存储（T24 折叠状态）', () => {
     expect(getSetting(db, 'x')).toBe('2');
   });
 });
+
+describe('重要日排序 · 每年重复（反馈 #11）', () => {
+  it('重复的生日即使今年过了，也按明年的日期排到未来区', () => {
+    createCountdown(db, { title: '已过的生日', targetDate: '2026-01-01', repeatYearly: true });
+    createCountdown(db, { title: '近的考试', targetDate: '2026-11-01' });
+
+    const list = listCountdowns(db, '2026-10-27');
+    expect(list.map((c) => c.title)).toEqual(['近的考试', '已过的生日']);
+  });
+});

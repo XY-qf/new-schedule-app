@@ -180,6 +180,24 @@ export function updateSchedule(
   });
 }
 
+/** 清空某个分类下的所有日程，返回删掉的条数（反馈 #13）。 */
+export function deleteSchedulesByCategory(db: Db, categoryId: string): number {
+  const rows = db
+    .prepare('SELECT id FROM schedules WHERE category_id = ?')
+    .all(categoryId) as { id: string }[];
+
+  db.transaction(() => {
+    for (const row of rows) {
+      db.prepare('DELETE FROM schedules WHERE id = ?').run(row.id);
+    }
+    db.exec(
+      'DELETE FROM recurrences WHERE id NOT IN (SELECT recurrence_id FROM schedules WHERE recurrence_id IS NOT NULL)',
+    );
+  });
+
+  return rows.length;
+}
+
 /**
  * 标记完成。重复日程必须按「单次实例」记（FR-7.4）：
  * 有 occurrenceStart 且有重复规则时写例外，绝不改整行的 is_done——那会把整个系列标完成。

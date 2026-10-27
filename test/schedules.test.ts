@@ -5,6 +5,7 @@ import { ensureSeedCategories } from '../src/main/repo/categories';
 import {
   createSchedule,
   deleteSchedule,
+  deleteSchedulesByCategory,
   listSchedulesByRange,
   updateSchedule,
   type ScheduleInput,
@@ -203,5 +204,37 @@ describe('重复规则写入（T17）', () => {
     });
     expect(s.recurrenceId).toBeNull();
     expect(db.prepare('SELECT COUNT(*) c FROM recurrences').get()).toEqual({ c: 0 });
+  });
+});
+
+describe('按分类清空日程（反馈 #13）', () => {
+  it('只删该分类的日程，其它分类和分类本身都在', () => {
+    createSchedule(db, {
+      title: '课程',
+      categoryId: 'cat-course',
+      timeType: 'range',
+      isAllDay: false,
+      startAt: '2026-10-27T09:00:00',
+      endAt: '2026-10-27T10:00:00',
+    });
+    createSchedule(db, {
+      title: '生活',
+      categoryId: 'cat-life',
+      timeType: 'range',
+      isAllDay: false,
+      startAt: '2026-10-27T11:00:00',
+      endAt: '2026-10-27T12:00:00',
+    });
+
+    const removed = deleteSchedulesByCategory(db, 'cat-course');
+    expect(removed).toBe(1);
+
+    const left = db.prepare('SELECT title FROM schedules').all() as { title: string }[];
+    expect(left.map((r) => r.title)).toEqual(['生活']);
+    expect(db.prepare("SELECT COUNT(*) c FROM categories WHERE id = 'cat-course'").get()).toEqual({ c: 1 });
+  });
+
+  it('空分类返回 0，不报错', () => {
+    expect(deleteSchedulesByCategory(db, 'cat-hobby')).toBe(0);
   });
 });

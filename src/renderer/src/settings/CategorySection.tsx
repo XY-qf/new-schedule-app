@@ -5,6 +5,7 @@ import { CATEGORY_PALETTE } from '../../../shared/palette';
 export function CategorySection(): JSX.Element {
   const [items, setItems] = useState<Category[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
 
   const reload = async (): Promise<void> => {
@@ -39,6 +40,22 @@ export function CategorySection(): JSX.Element {
     }
   };
 
+  /** 清空这个分类下的所有日程，分类本身保留（反馈 #13）。 */
+  const clearSchedules = async (category: Category): Promise<void> => {
+    const ok = window.confirm(
+      `清空「${category.name}」分类下的所有日程？\n（只删日程，分类本身和其它分类不受影响）`,
+    );
+    if (!ok) return;
+
+    try {
+      const count = await window.api?.schedules.clearCategory({ categoryId: category.id });
+      setError(null);
+      setMessage(`「${category.name}」已删除 ${count ?? 0} 条日程`);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    }
+  };
+
   const create = async (): Promise<void> => {
     if (!newName.trim()) return;
     try {
@@ -56,6 +73,11 @@ export function CategorySection(): JSX.Element {
 
   return (
     <div data-testid="category-section">
+      {message ? (
+        <p className="set__hint" data-testid="cat-message">
+          {message}
+        </p>
+      ) : null}
       {error ? (
         <p className="form__error" role="alert">
           {error}
@@ -97,6 +119,16 @@ export function CategorySection(): JSX.Element {
             onClick={() => void patch(c.id, { remindEnabled: !c.remindEnabled })}
           >
             {c.remindEnabled ? '提醒开' : '提醒关'}
+          </button>
+
+          <button
+            type="button"
+            className="set__mini"
+            aria-label={`清空 ${c.name} 的日程`}
+            title="删除这个分类下的全部日程，分类本身保留"
+            onClick={() => void clearSchedules(c)}
+          >
+            清空日程
           </button>
 
           <button

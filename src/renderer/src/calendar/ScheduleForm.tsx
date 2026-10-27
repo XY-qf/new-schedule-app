@@ -77,8 +77,12 @@ export function ScheduleForm({
   );
 
   const [isInTodo, setIsInTodo] = useState(initial?.isInTodo ?? false);
-  // null = 不提醒；数字 = 提前多少分钟
-  const [remindBefore, setRemindBefore] = useState<number | null>(null);
+  const [note, setNote] = useState(initial?.note ?? '');
+  /**
+   * 提醒选项：'none' 不提醒；数字字符串 = 提前 N 分钟；'1d' = 提前一天（可指定时刻）。
+   */
+  const [remind, setRemind] = useState<string>('none');
+  const [remindAt, setRemindAt] = useState('09:00');
   const [remindLoaded, setRemindLoaded] = useState(false);
   const [recurrence, setRecurrence] = useState<RecurrenceDraft | null>(null);
   const isRecurring = Boolean(initial?.recurrenceId);
@@ -91,7 +95,14 @@ export function ScheduleForm({
     if (!initial || remindLoaded) return;
     void (async () => {
       const existing = await window.api?.reminders?.get({ scheduleId: initial.id });
-      setRemindBefore(existing?.offsetMinutes ?? null);
+      if (existing?.dayOffset != null) {
+        setRemind('1d');
+        setRemindAt(existing.atTime ?? '09:00');
+      } else if (existing?.offsetMinutes != null) {
+        setRemind(String(existing.offsetMinutes));
+      } else {
+        setRemind('none');
+      }
       setRemindLoaded(true);
     })();
   }, [initial, remindLoaded]);
@@ -149,7 +160,7 @@ export function ScheduleForm({
     setSaving(true);
     setError(null);
 
-    const base = { title: title.trim(), categoryId, isInTodo };
+    const base = { title: title.trim(), categoryId, isInTodo, note: note.trim() || null };
 
     const payload = byPeriod
       ? {
@@ -195,13 +206,11 @@ export function ScheduleForm({
           })
         : await api.schedules.create({ ...payload, recurrence });
 
-      // 提醒跟着日程走：全天用「提前一天 + 09:00」，其余用「提前 N 分钟」
-      if (remindBefore !== null) {
-        await api.reminders?.set(
-          payload.isAllDay
-            ? { scheduleId: saved.id, dayOffset: 1, atTime: '09:00' }
-            : { scheduleId: saved.id, offsetMinutes: remindBefore },
-        );
+      // 提醒跟着日程走：'1d' 用「提前一天 + 指定时刻」，其余用「提前 N 分钟」
+      if (remind === '1d') {
+        await api.reminders?.set({ scheduleId: saved.id, dayOffset: 1, atTime: remindAt });
+      } else if (remind !== 'none') {
+        await api.reminders?.set({ scheduleId: saved.id, offsetMinutes: Number(remind) });
       } else if (initial) {
         await api.reminders?.set({ scheduleId: saved.id, offsetMinutes: null });
       }
@@ -253,28 +262,6 @@ export function ScheduleForm({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
         />
-
-        <div className="form__label">提醒</div>
-        <div className="form__row" data-testid="remind-row">
-          {[
-            { value: null, label: '不提醒' },
-            { value: 0, label: '准时' },
-            { value: 5, label: '提前 5 分钟' },
-            { value: 10, label: '提前 10 分钟' },
-            { value: 30, label: '提前 30 分钟' },
-          ].map((opt) => (
-            <button
-              key={String(opt.value)}
-              type="button"
-              role="radio"
-              aria-checked={remindBefore === opt.value}
-              className={remindBefore === opt.value ? 'chip is-on' : 'chip'}
-              onClick={() => setRemindBefore(opt.value)}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
 
         <div className="form__label">分类</div>
         <div className="form__row">
@@ -431,10 +418,23 @@ export function ScheduleForm({
           <span className="recur__summary">勾上后会出现在待办列表</span>
         </div>
 
+        <div className="form__label">备注</div>
+        <input
+          className="form__input"
+          aria-label="备注"
+          placeholder="地点、要带的东西…"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+        />
+
         {initial ? null : (
           <>
             <div className="form__label">重复</div>
-            <RecurrenceEditor value={recurrence} onChange={setRecurrence} />
+            <RecurrenceEditor
+              value={recurrence}
+              onChange={setRecurrence}
+              anchorDate={startAt ? startAt.slice(0, 10) : startDate || periodDate}
+            />
           </>
         )}
 
@@ -463,6 +463,36 @@ export function ScheduleForm({
             </div>
           </>
         ) : null}
+
+        <div className="form__label">提醒</div>
+        <div className="form__row" data-testid="remind-row">
+          <select
+            className="form__select"
+            aria-label="提醒"
+            value={remind}
+            onChange={(e) => setRemind(e.target.value)}
+          >
+            <option value="none">不提醒</option>
+            <option value="0">准时</option>
+            <option value="5">提前 5 分钟</option>
+            <option value="10">提前 10 分钟</option>
+            <option value="15">提前 15 分钟</option>
+            <option value="30">提前 30 分钟</option>
+            <option value="60">提前 1 小时</option>
+            <option value="120">提前 2 小时</option>
+            <option value="1d">提前 1 天（可定时刻）</option>
+          </select>
+
+          {remind === '1d' ? (
+            <input
+              className="form__input form__input--sm"
+              aria-label="提前一天的时刻"
+              type="time"
+              value={remindAt}
+              onChange={(e) => setRemindAt(e.target.value)}
+            />
+          ) : null}
+        </div>
 
         {hint ? (
           <p className="form__error" role="alert">

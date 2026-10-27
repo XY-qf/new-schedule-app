@@ -20,6 +20,7 @@ export const CHANNELS = {
   tasksSetDone: 'tasks:setDone',
   tasksDelete: 'tasks:delete',
   schedulesSetDone: 'schedules:setDone',
+  schedulesClearCategory: 'schedules:clearCategory',
   countdownsList: 'countdowns:list',
   countdownsCreate: 'countdowns:create',
   countdownsUpdate: 'countdowns:update',
